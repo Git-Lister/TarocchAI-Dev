@@ -1,0 +1,3 @@
+# Hayles' Unthought and TarocchAI
+
+Mapping of cognitive layers...

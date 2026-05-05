@@ -1,0 +1,3 @@
+# AI Tarot Landscape
+
+Brief analysis...
