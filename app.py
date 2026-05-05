@@ -1,6 +1,7 @@
-"""TarocchAI - MVP NiceGUI Frontend"""
+"""TarocchAI – Theatrical Tarot Experience"""
 
 import asyncio
+import os
 
 from nicegui import ui
 
@@ -10,90 +11,47 @@ from engine.reading.drawer import draw_cards
 from engine.reading.interpreter import TarotReader
 
 # ------------------------------------------------------------
-# Custom CSS
+# CSS (embedded directly – no static file serving needed)
 # ------------------------------------------------------------
-ui.add_head_html("""
-<style>
-body {
-    background: #0f0f0f;
-    color: #efe8db;
-    font-family: 'Georgia', 'Times New Roman', serif;
-}
-#tarot-app {
-    min-height: 100vh;
-    padding: 2rem 1rem 3rem;
-}
-.tarot-card {
-    background: rgba(12, 12, 12, 0.9);
-    border: 1px solid rgba(255, 215, 0, 0.18);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-    border-radius: 18px;
-}
-.chat-message {
-    padding: 1rem 1.25rem;
-    border-radius: 18px;
-    max-width: 100%;
-    white-space: pre-wrap;
-}
-.chat-user {
-    background: rgba(255, 255, 255, 0.08);
-    color: #f8f2e7;
-    text-align: right;
-    align-self: flex-end;
-}
-.chat-ai {
-    background: rgba(255, 215, 0, 0.08);
-    color: #efe8db;
-    text-align: left;
-}
-.card-label {
-    font-variant: small-caps;
-    letter-spacing: 0.08em;
-}
-</style>
-""")
+CSS_PATH = os.path.join(os.path.dirname(__file__), "static", "css", "tarot.css")
+with open(CSS_PATH, "r", encoding="utf-8") as f:
+    TAROT_CSS = f.read()
+ui.add_head_html(f"<style>{TAROT_CSS}</style>")
+
 
 # ------------------------------------------------------------
 # Shared state
 # ------------------------------------------------------------
 interviewer = None
 spread_data = []
-
-# ------------------------------------------------------------
-# Element references (assigned when sections are built)
-# ------------------------------------------------------------
-welcome_section = None
-intake_section = None
+chat_input_ref = None          # set later in intake scene
+mirror_input_ref = None        # set later in mirror scene
 messages_box = None
-chat_input_ref = None
-mirror_section = None
-mirror_input_ref = None
-spread_section = None
-spread_cards = None
-reading_section = None
 reading_output = None
 reader_spinner = None
-end_section = None
+spread_cards = None
 
-all_sections = []
+# ------------------------------------------------------------
+# Helper functions
+# ------------------------------------------------------------
+all_scenes = []                 # populated after all scenes are built
 
-def show_section(target):
-    for sec in all_sections:
-        sec.style("display: none;")
-    target.style("display: block;")
+def show_scene(target):
+    for scene in all_scenes:
+        scene.classes(remove="active")
+    target.classes(add="active")
     ui.update()
 
 def add_chat_message(sender: str, text: str):
-    css_class = "chat-ai tarot-card" if sender == "assistant" else "chat-user tarot-card"
-    label = "TarocchAI" if sender == "assistant" else "You"
+    css_class = "chat-ai" if sender == "assistant" else "chat-user"
+    label = "Reader" if sender == "assistant" else "You"
     with messages_box:
-        ui.markdown(f"**{label}:** {text}").classes(css_class)
-    # Note: auto-scroll has been removed for now – the chat area is scrollable manually
+        ui.markdown(f"**{label}:** {text}").classes(f"chat-message {css_class}")
 
 async def start_intake():
     global interviewer
     interviewer = IntakeInterviewer(model_name=MODEL_NAME)
-    show_section(intake_section)
+    show_scene(intake_scene)
     opener = await interviewer.start()
     add_chat_message("assistant", opener)
 
@@ -111,8 +69,8 @@ async def handle_intake_input():
     add_chat_message("assistant", reply)
 
     if interviewer.is_complete:
-        await asyncio.sleep(0.3)
-        show_section(mirror_section)
+        await asyncio.sleep(0.5)
+        show_scene(mirror_scene)
 
 async def handle_mirror_response():
     value = mirror_input_ref.value.strip()
@@ -125,22 +83,20 @@ async def handle_mirror_response():
 def show_spread():
     global spread_data
     spread_data = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
-    spread_cards.set_visibility(True)
     spread_cards.clear()
     with spread_cards:
-        for entry in spread_data:
+        for i, entry in enumerate(spread_data):
             position = entry["position"]
             name = entry["card"]["name"]
-            with ui.card().classes("tarot-card p-4 min-w-[200px] flex-1"):
+            card = ui.card().classes("spread-card")
+            card.style(f"animation-delay: {i * 0.15}s")
+            with card:
                 ui.markdown(f"**{position}**").classes("card-label")
-                ui.markdown(f"### {name}")
-    show_section(spread_section)
-
-async def restart_app():
-    ui.run_javascript("window.location.reload()")
+                ui.markdown(f"### {name}").classes("card-name")
+    show_scene(spread_scene)
 
 async def start_reading():
-    show_section(reading_section)
+    show_scene(reading_scene)
     reader_spinner.visible = True
     reading_output.set_content("")
 
@@ -157,58 +113,72 @@ async def start_reading():
         await asyncio.sleep(0)
 
     reader_spinner.visible = False
-    # Keep the reading visible and add the curtain message below it
-    with reading_section:
+    # curtain inside reading scene
+    with reading_scene:
         ui.markdown("---")
-        ui.markdown("🎭 The TarocchAI Reader draws the curtain. Until next time.").classes("text-lg")
-        ui.button("Read again?", on_click=lambda _: asyncio.create_task(restart_app())).classes("primary")
+        ui.markdown("🎭 The cards are silent now. You may return, when you need to.").classes("curtain-message")
+        ui.button("Begin again", on_click=lambda _: asyncio.create_task(restart_app())).classes("primary")
+
+async def restart_app():
+    ui.run_javascript("window.location.reload()")
 
 # ------------------------------------------------------------
-# Build all sections
+# Scenes (built sequentially – no redefinitions)
 # ------------------------------------------------------------
-with ui.column().classes("items-center justify-center").style("min-height: 100vh; padding: 2rem;") as welcome_section:
-    ui.markdown("# TarocchAI").classes("text-5xl").style("color: #efe8db;")
-    ui.markdown(
-        "Local, offline Tarot reading with a grounded, poetic voice. "
-        "Enter the intake circle and let the cards speak through your imagery."
-    ).classes("text-lg max-w-2xl")
-    ui.button("Enter", on_click=lambda _: asyncio.create_task(start_intake())).classes("primary text-base")
 
-with ui.column().classes("max-w-4xl mx-auto gap-4").style("display: none; padding: 2rem 0;") as intake_section:
-    ui.markdown("## Intake Chat").classes("text-3xl")
-    messages_box = ui.column().props("id=messages").style("max-height: 55vh; overflow-y: auto; gap: 1rem; padding-right: 0.5rem;")
-    with ui.row().classes("gap-2 items-end"):
-        chat_input_ref = ui.input(placeholder="Share the first image or sensation that comes to mind...").classes("w-full")
-        ui.button("Send", on_click=lambda _: asyncio.create_task(handle_intake_input())).classes("primary")
+# Threshold
+with ui.element("div").classes("scene active threshold-scene") as threshold_scene:
+    ui.element("div").classes("hexagram")
+    ui.markdown("The room is quiet. When you are ready, step forward.").classes("threshold-text")
+    ui.timer(3.0, lambda: show_scene(arrival_scene), once=True)
 
-with ui.column().classes("max-w-4xl mx-auto gap-4").style("display: none; padding: 2rem 0;") as mirror_section:
-    ui.markdown("## Mirror Card").classes("text-3xl")
-    ui.markdown(
-        "A dark card back appears. Take a moment and notice what comes to mind. "
-        "Then name the first detail that catches your eye."
-    ).classes("text-lg")
-    mirror_input_ref = ui.input(placeholder="What catches your eye first?").classes("w-full")
-    ui.button("Share", on_click=lambda _: asyncio.create_task(handle_mirror_response())).classes("primary")
+all_scenes.append(threshold_scene)
 
-with ui.column().classes("max-w-5xl mx-auto gap-4").style("display: none; padding: 2rem 0;") as spread_section:
-    ui.markdown("## Spread Reveal").classes("text-3xl")
-    spread_cards = ui.row().classes("gap-4 flex-wrap")
-    ui.button("Reveal Reading", on_click=lambda _: asyncio.create_task(start_reading())).classes("primary")
+# Arrival
+with ui.element("div").classes("scene arrival-scene") as arrival_scene:
+    ui.markdown("# TAROCCHAI").classes("title-gold")
+    ui.markdown("A reading that moves from your hands into the world.").classes("subtitle")
+    ui.button("Sit with me.", on_click=lambda _: asyncio.create_task(start_intake())).classes("primary")
 
-with ui.column().classes("max-w-5xl mx-auto gap-4").style("display: none; padding: 2rem 0;") as reading_section:
-    ui.markdown("## TarocchAI Reading").classes("text-3xl")
-    reading_output = ui.markdown("").classes("tarot-card")
+all_scenes.append(arrival_scene)
+
+# Intake
+with ui.element("div").classes("scene intake-scene") as intake_scene:
+    ui.markdown("## The Listening").classes("section-heading")
+    messages_box = ui.column().classes("chat-messages")
+    with ui.row().classes("chat-input-row"):
+        chat_input_ref = ui.input(placeholder="...").classes("chat-input")
+        ui.button("→", on_click=lambda _: asyncio.create_task(handle_intake_input())).classes("send-btn")
+
+all_scenes.append(intake_scene)
+
+# Mirror
+with ui.element("div").classes("scene mirror-scene") as mirror_scene:
+    ui.element("div").classes("mirror-card-back")
+    ui.markdown("Look at the card. What does your eye touch first? Don't think. Just the first thing.").classes("mirror-prompt")
+    mirror_input_ref = ui.input(placeholder="...").classes("chat-input")
+    ui.button("→", on_click=lambda _: asyncio.create_task(handle_mirror_response())).classes("send-btn")
+
+all_scenes.append(mirror_scene)
+
+# Spread
+with ui.element("div").classes("scene spread-scene") as spread_scene:
+    ui.markdown("## The Fall").classes("section-heading")
+    spread_cards = ui.row().classes("spread-row")
+    ui.button("Tell me what's there.", on_click=lambda _: asyncio.create_task(start_reading())).classes("primary")
+
+all_scenes.append(spread_scene)
+
+# Reading
+with ui.element("div").classes("scene reading-scene") as reading_scene:
+    ui.markdown("## The Telling").classes("section-heading")
+    reading_output = ui.markdown("").classes("reading-card")
     reader_spinner = ui.spinner("dots")
     reader_spinner.visible = False
 
-with ui.column().classes("max-w-4xl mx-auto gap-4 items-center").style("display: none; padding: 2rem 0;") as end_section:
-    ui.markdown("## Curtain Close").classes("text-3xl")
-    ui.markdown("The TarocchAI Reader draws the curtain. Until next time.").classes("text-lg")
-    ui.button("Read again?", on_click=lambda _: asyncio.create_task(restart_app())).classes("primary")
-
-all_sections = [welcome_section, intake_section, mirror_section, spread_section, reading_section, end_section]
+all_scenes.append(reading_scene)
 
 # ------------------------------------------------------------
-# Launch
+# Launch (serve static files from ui/static)
 # ------------------------------------------------------------
 ui.run(title="TarocchAI", dark=True)
