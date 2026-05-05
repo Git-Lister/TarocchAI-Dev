@@ -126,7 +126,7 @@ def show_spread():
     global spread_data
     spread_data = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
     spread_cards.set_visibility(True)
-    spread_cards.clear_ui()
+    spread_cards.clear()
     with spread_cards:
         for entry in spread_data:
             position = entry["position"]
