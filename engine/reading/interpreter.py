@@ -4,9 +4,7 @@ TarocchAI Reader: core synthesis.
 
 import os
 
-from ollama import AsyncClient
-
-from config import MODEL_NAME, OLLAMA_URL
+from engine.llm_client import chat as llm_chat
 from engine.rag.retriever import retrieve_card_context
 
 READER_SYSTEM_PROMPT = """You are the TarocchAI Oracle.
@@ -53,9 +51,7 @@ Then state a single, concrete, physical action.
 """
 
 class TarotReader:
-    def __init__(self, model_name: str = MODEL_NAME):
-        self.model = model_name
-        self.client = AsyncClient(host=OLLAMA_URL if OLLAMA_URL else None)
+    """The TarocchAI Oracle – no local model state required; backend is handled by llm_client."""
 
     async def stream_reading(self, situational_sketch: str, drawn_cards: list, spread_name: str = "Past-Present-Future"):
         prompt = self._build_prompt(situational_sketch, drawn_cards, spread_name)
@@ -63,15 +59,9 @@ class TarotReader:
             {"role": "system", "content": READER_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
-        stream = await self.client.chat(
-            model=self.model,
-            messages=messages,
-            stream=True,
-        )
-        async for chunk in stream:
-            content = chunk.get("message", {}).get("content", "")
-            if content:
-                yield content
+        chunk_stream = await llm_chat(messages, stream=True)
+        async for content in chunk_stream:
+            yield content
 
     def _build_prompt(self, sketch: str, drawn_cards: list, spread_name: str) -> str:
         card_lines = []

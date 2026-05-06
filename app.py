@@ -1,184 +1,268 @@
-"""TarocchAI – Theatrical Tarot Experience"""
+"""TarocchAI – Multi‑User Theatrical Oracle"""
 
 import asyncio
 import os
+import secrets
 
-from nicegui import ui
+from nicegui import app, ui
 
 from config import MODEL_NAME
+from engine.data_store import save_session
 from engine.intake.interviewer import IntakeInterviewer
+from engine.ollama_queue import ollama_queue
 from engine.reading.drawer import draw_cards
 from engine.reading.interpreter import TarotReader
 
 # ------------------------------------------------------------
-# CSS (embedded directly – no static file serving needed)
+# In‑memory store for non‑serializable objects (keyed by client ID)
+# ------------------------------------------------------------
+interviewers = {}
+
+# ------------------------------------------------------------
+# CSS (embedded)
 # ------------------------------------------------------------
 CSS_PATH = os.path.join(os.path.dirname(__file__), "static", "css", "tarot.css")
 with open(CSS_PATH, "r", encoding="utf-8") as f:
     TAROT_CSS = f.read()
 ui.add_head_html(f"<style>{TAROT_CSS}</style>")
 
+# ------------------------------------------------------------
+# Password (set env TAROCCHAI_PASSWORD, or empty = no gate)
+# ------------------------------------------------------------
+PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
 
 # ------------------------------------------------------------
-# Shared state
+# Per‑session state initialisation
 # ------------------------------------------------------------
-interviewer = None
-spread_data = []
-chat_input_ref = None          # set later in intake scene
-mirror_input_ref = None        # set later in mirror scene
-messages_box = None
-reading_output = None
-reader_spinner = None
-spread_cards = None
+@app.get("/")
+def init_session():
+    app.storage.user.clear()
+    app.storage.user.update({
+        "scene": "threshold",
+        "spread_data": [],
+        "mirror_response": "",
+        "full_reading": "",
+        "authenticated": False,
+        "chat_messages": [],
+        "client_id": "",
+        "_ui_version": 0,             # incremented whenever the UI should rebuild
+    })
 
-# ------------------------------------------------------------
-# Helper functions
-# ------------------------------------------------------------
-all_scenes = []                 # populated after all scenes are built
-
-def show_scene(target):
-    for scene in all_scenes:
-        scene.classes(remove="active")
-    target.classes(add="active")
-    ui.update()
-
-def add_chat_message(sender: str, text: str):
-    css_class = "chat-ai" if sender == "assistant" else "chat-user"
-    label = "Reader" if sender == "assistant" else "You"
-    with messages_box:
-        ui.markdown(f"**{label}:** {text}").classes(f"chat-message {css_class}")
-
-async def start_intake():
-    global interviewer
-    interviewer = IntakeInterviewer(model_name=MODEL_NAME)
-    show_scene(intake_scene)
-    opener = await interviewer.start()
-    add_chat_message("assistant", opener)
-
-async def handle_intake_input():
-    text = chat_input_ref.value.strip()
-    if not text:
-        return
-    add_chat_message("user", text)
-    chat_input_ref.value = ""
-    chat_input_ref.update()
-
-    if interviewer is None:
-        return
-    reply = await interviewer.conversation_turn(text)
-    add_chat_message("assistant", reply)
-
-    if interviewer.is_complete:
-        await asyncio.sleep(0.5)
-        show_scene(mirror_scene)
-
-async def handle_mirror_response():
-    value = mirror_input_ref.value.strip()
-    if not value:
-        return
-    mirror_input_ref.value = ""
-    mirror_input_ref.update()
-    show_spread()
-
-def show_spread():
-    global spread_data
-    spread_data = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
-    spread_cards.clear()
-    with spread_cards:
-        for i, entry in enumerate(spread_data):
-            position = entry["position"]
-            name = entry["card"]["name"]
-            card = ui.card().classes("spread-card")
-            card.style(f"animation-delay: {i * 0.15}s")
-            with card:
-                ui.markdown(f"**{position}**").classes("card-label")
-                ui.markdown(f"### {name}").classes("card-name")
-    show_scene(spread_scene)
-
-async def start_reading():
-    show_scene(reading_scene)
-    reader_spinner.visible = True
-    reading_output.set_content("")
-
-    reader = TarotReader(model_name=MODEL_NAME)
-    sketch = interviewer.situational_sketch if interviewer else ""
-    content = ""
-    async for chunk in reader.stream_reading(
-        situational_sketch=sketch,
-        drawn_cards=spread_data,
-        spread_name="Past-Present-Future",
-    ):
-        content += chunk
-        reading_output.set_content(content)
-        await asyncio.sleep(0)
-
-    reader_spinner.visible = False
-    # curtain inside reading scene
-    with reading_scene:
-        ui.markdown("---")
-        ui.markdown("🎭 The cards are silent now. You may return, when you need to.").classes("curtain-message")
-        ui.button("Begin again", on_click=lambda _: asyncio.create_task(restart_app())).classes("primary")
-
-async def restart_app():
-    ui.run_javascript("window.location.reload()")
+@app.post("/")
+def bump_ui():
+    """Force a UI refresh by bumping the version."""
+    app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
 
 # ------------------------------------------------------------
-# Scenes (built sequentially – no redefinitions)
+# Main UI page
 # ------------------------------------------------------------
+@ui.page("/")
+async def main_page():
+    client_id = ui.context.client.id
+    app.storage.user["client_id"] = client_id
 
-# Threshold
-with ui.element("div").classes("scene active threshold-scene") as threshold_scene:
-    ui.element("div").classes("hexagram")
-    ui.markdown("The room is quiet. When you are ready, step forward.").classes("threshold-text")
-    ui.timer(3.0, lambda: show_scene(arrival_scene), once=True)
+    container = ui.element("div")
+    last_version = -1
 
-all_scenes.append(threshold_scene)
+    def render():
+        nonlocal last_version
+        state = app.storage.user
+        ver = state.get("_ui_version", 0)
+        if ver == last_version:
+            return                      # nothing changed, don't rebuild
+        last_version = ver
+        container.clear()
+        current = state.get("scene", "threshold")
+        cid = state.get("client_id", "")
 
-# Arrival
-with ui.element("div").classes("scene arrival-scene") as arrival_scene:
-    ui.markdown("# TAROCCHAI").classes("title-gold")
-    ui.markdown("A reading that moves from your hands into the world.").classes("subtitle")
-    ui.button("Sit with me.", on_click=lambda _: asyncio.create_task(start_intake())).classes("primary")
+        # ---- Threshold ----
+        if current == "threshold":
+            with container:
+                with ui.element("div").classes("scene active threshold-scene"):
+                    ui.element("div").classes("hexagram")
+                    ui.markdown("The room is quiet. When you are ready, step forward.").classes("threshold-text")
+                    async def advance():
+                        await asyncio.sleep(2)
+                        state["scene"] = "arrival"
+                        state["_ui_version"] = ver + 1
+                    asyncio.create_task(advance())
 
-all_scenes.append(arrival_scene)
+        # ---- Arrival ----
+        elif current == "arrival":
+            with container:
+                with ui.element("div").classes("scene active arrival-scene"):
+                    ui.markdown("# TAROCCHAI").classes("title-gold")
+                    ui.markdown("A reading that moves from your hands into the world.").classes("subtitle")
+                    pwd_input = ui.input(
+                        "The word to enter",
+                        placeholder="Whisper the password…",
+                        password=True,
+                        password_toggle_button=True
+                    ).classes("w-64")
+                    pwd_label = ui.markdown("").classes("text-sm text-red-400")
 
-# Intake
-with ui.element("div").classes("scene intake-scene") as intake_scene:
-    ui.markdown("## The Listening").classes("section-heading")
-    messages_box = ui.column().classes("chat-messages")
-    with ui.row().classes("chat-input-row"):
-        chat_input_ref = ui.input(placeholder="...").classes("chat-input")
-        ui.button("→", on_click=lambda _: asyncio.create_task(handle_intake_input())).classes("send-btn")
+                    async def try_enter():
+                        if PASSWORD and pwd_input.value != PASSWORD:
+                            pwd_label.set_content("The room is not ready for you.")
+                            return
+                        state["authenticated"] = True
+                        if ollama_queue.is_busy:
+                            state["scene"] = "waiting"
+                        else:
+                            interviewers[cid] = IntakeInterviewer(model_name=MODEL_NAME)
+                            state["scene"] = "intake"
+                        if state["scene"] == "intake":
+                            opener = await interviewers[cid].start()
+                            state["chat_messages"] = [("assistant", opener)]
+                        state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-all_scenes.append(intake_scene)
+                    ui.button("Sit with me.", on_click=lambda _: asyncio.create_task(try_enter())).classes("primary")
 
-# Mirror
-with ui.element("div").classes("scene mirror-scene") as mirror_scene:
-    ui.element("div").classes("mirror-card-back")
-    ui.markdown("Look at the card. What does your eye touch first? Don't think. Just the first thing.").classes("mirror-prompt")
-    mirror_input_ref = ui.input(placeholder="...").classes("chat-input")
-    ui.button("→", on_click=lambda _: asyncio.create_task(handle_mirror_response())).classes("send-btn")
+        # ---- Waiting Room ----
+        elif current == "waiting":
+            with container:
+                with ui.element("div").classes("scene active waiting-scene"):
+                    ui.element("div").classes("hexagram pulsating")
+                    ui.markdown("The Oracle is with another. Wait in the quiet. You will be seen.").classes("threshold-text")
+                    ui.spinner("dots").classes("mt-4")
 
-all_scenes.append(mirror_scene)
+                    async def wait_loop():
+                        while ollama_queue.is_busy:
+                            await asyncio.sleep(1)
+                        if cid not in interviewers:
+                            interviewers[cid] = IntakeInterviewer(model_name=MODEL_NAME)
+                        state["scene"] = "intake"
+                        opener = await interviewers[cid].start()
+                        state["chat_messages"] = [("assistant", opener)]
+                        state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-# Spread
-with ui.element("div").classes("scene spread-scene") as spread_scene:
-    ui.markdown("## The Fall").classes("section-heading")
-    spread_cards = ui.row().classes("spread-row")
-    ui.button("Tell me what's there.", on_click=lambda _: asyncio.create_task(start_reading())).classes("primary")
+                    asyncio.create_task(wait_loop())
 
-all_scenes.append(spread_scene)
+        # ---- Intake ----
+        elif current == "intake":
+            messages = state.get("chat_messages", [])
+            with container:
+                with ui.element("div").classes("scene active intake-scene"):
+                    ui.markdown("## The Listening").classes("section-heading")
+                    messages_box = ui.column().classes("chat-messages")
+                    for sender, text in messages:
+                        css_class = "chat-ai" if sender == "assistant" else "chat-user"
+                        label = "Reader" if sender == "assistant" else "You"
+                        with messages_box:
+                            ui.markdown(f"**{label}:** {text}").classes(f"chat-message {css_class}")
 
-# Reading
-with ui.element("div").classes("scene reading-scene") as reading_scene:
-    ui.markdown("## The Telling").classes("section-heading")
-    reading_output = ui.markdown("").classes("reading-card")
-    reader_spinner = ui.spinner("dots")
-    reader_spinner.visible = False
+                    with ui.row().classes("chat-input-row"):
+                        chat_input = ui.input(placeholder="...").classes("chat-input")
 
-all_scenes.append(reading_scene)
+                        async def send_intake():
+                            if cid not in interviewers:
+                                return
+                            text = chat_input.value.strip()
+                            if not text:
+                                return
+                            messages.append(("user", text))
+                            chat_input.value = ""
+                            state["_ui_version"] = state.get("_ui_version", 0) + 1
+
+                            async def call():
+                                return await interviewers[cid].conversation_turn(text)
+                            reply = await ollama_queue.submit(call())
+                            messages.append(("assistant", reply))
+                            state["_ui_version"] = state.get("_ui_version", 0) + 1
+                            if interviewers[cid].is_complete:
+                                state["sketch"] = interviewers[cid].situational_sketch
+                                state["scene"] = "mirror"
+                            state["_ui_version"] = state.get("_ui_version", 0) + 1
+
+                        ui.button("→", on_click=lambda _: asyncio.create_task(send_intake())).classes("send-btn")
+
+        # ---- Mirror ----
+        elif current == "mirror":
+            with container:
+                with ui.element("div").classes("scene active mirror-scene"):
+                    ui.element("div").classes("mirror-card-back")
+                    ui.markdown("Look at the card. What does your eye touch first? Don't think. Just the first thing.").classes("mirror-prompt")
+                    mirror_input = ui.input(placeholder="...").classes("chat-input")
+
+                    async def send_mirror():
+                        value = mirror_input.value.strip()
+                        if not value:
+                            return
+                        state["mirror_response"] = value
+                        state["spread_data"] = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
+                        state["scene"] = "spread"
+                        state["_ui_version"] = state.get("_ui_version", 0) + 1
+
+                    ui.button("→", on_click=lambda _: asyncio.create_task(send_mirror())).classes("send-btn")
+
+        # ---- Spread ----
+        elif current == "spread":
+            spread = state.get("spread_data", [])
+            with container:
+                with ui.element("div").classes("scene active spread-scene"):
+                    ui.markdown("## The Fall").classes("section-heading")
+                    spread_row = ui.row().classes("spread-row")
+                    for i, entry in enumerate(spread):
+                        with spread_row:
+                            card = ui.card().classes("spread-card")
+                            card.style(f"animation-delay: {i * 0.15}s")
+                            with card:
+                                ui.markdown(f"**{entry['position']}**").classes("card-label")
+                                ui.markdown(f"### {entry['card']['name']}").classes("card-name")
+
+                    async def reveal():
+                        state["scene"] = "reading"
+                        state["_ui_version"] = state.get("_ui_version", 0) + 1
+                        reader = TarotReader()
+                        sketch = state.get("sketch", "")
+
+                        async def stream():
+                            full = ""
+                            async for chunk in reader.stream_reading(
+                                situational_sketch=sketch,
+                                drawn_cards=spread,
+                                spread_name="Past-Present-Future",
+                            ):
+                                full += chunk
+                            return full
+                        state["full_reading"] = await ollama_queue.submit(stream())
+                        state["scene"] = "curtain"
+                        state["_ui_version"] = state.get("_ui_version", 0) + 1
+                        save_session(
+                            sketch=sketch,
+                            spread=spread,
+                            reading=state["full_reading"],
+                            mirror=state.get("mirror_response", "")
+                        )
+
+                    ui.button("Tell me what's there.", on_click=lambda _: asyncio.create_task(reveal())).classes("primary")
+
+        # ---- Reading + Curtain ----
+        elif current in ("reading", "curtain"):
+            reading_text = state.get("full_reading", "")
+            with container:
+                with ui.element("div").classes("scene active reading-scene"):
+                    ui.markdown("## The Telling").classes("section-heading")
+                    if reading_text:
+                        ui.markdown(reading_text).classes("reading-card")
+                    else:
+                        ui.spinner("dots")
+                    if current == "curtain":
+                        ui.markdown("---")
+                        ui.markdown("🎭 The cards are silent now. You may return, when you need to.").classes("curtain-message")
+
+                        def restart():
+                            app.storage.user.clear()
+                            init_session()
+                            app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
+
+                        ui.button("Begin again", on_click=lambda _: restart()).classes("primary")
+
+    # Timer runs continuously but only rebuilds when version changes
+    ui.timer(0.2, render)
 
 # ------------------------------------------------------------
-# Launch (serve static files from ui/static)
+# Launch
 # ------------------------------------------------------------
-ui.run(title="TarocchAI", dark=True)
+STORAGE_SECRET = os.getenv("TAROCCHAI_STORAGE_SECRET", secrets.token_hex(32))
+ui.run(title="TarocchAI", dark=True, storage_secret=STORAGE_SECRET)
