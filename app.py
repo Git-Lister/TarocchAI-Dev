@@ -7,6 +7,7 @@ import secrets
 from nicegui import app, ui
 
 from config import MODEL_NAME
+from engine.art.generator import sanitize_filename
 from engine.data_store import save_session
 from engine.intake.interviewer import IntakeInterviewer
 from engine.ollama_queue import ollama_queue
@@ -31,27 +32,32 @@ ui.add_head_html(f"<style>{TAROT_CSS}</style>")
 # ------------------------------------------------------------
 PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
 
+
 # ------------------------------------------------------------
 # Per‑session state initialisation
 # ------------------------------------------------------------
 @app.get("/")
 def init_session():
     app.storage.user.clear()
-    app.storage.user.update({
-        "scene": "threshold",
-        "spread_data": [],
-        "mirror_response": "",
-        "full_reading": "",
-        "authenticated": False,
-        "chat_messages": [],
-        "client_id": "",
-        "_ui_version": 0,             # incremented whenever the UI should rebuild
-    })
+    app.storage.user.update(
+        {
+            "scene": "threshold",
+            "spread_data": [],
+            "mirror_response": "",
+            "full_reading": "",
+            "authenticated": False,
+            "chat_messages": [],
+            "client_id": "",
+            "_ui_version": 0,  # incremented whenever the UI should rebuild
+        }
+    )
+
 
 @app.post("/")
 def bump_ui():
     """Force a UI refresh by bumping the version."""
     app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
+
 
 # ------------------------------------------------------------
 # Main UI page
@@ -65,11 +71,13 @@ async def main_page():
     last_version = -1
 
     def render():
+        import os
+
         nonlocal last_version
         state = app.storage.user
         ver = state.get("_ui_version", 0)
         if ver == last_version:
-            return                      # nothing changed, don't rebuild
+            return
         last_version = ver
         container.clear()
         current = state.get("scene", "threshold")
@@ -80,11 +88,15 @@ async def main_page():
             with container:
                 with ui.element("div").classes("scene active threshold-scene"):
                     ui.element("div").classes("hexagram")
-                    ui.markdown("The room is quiet. When you are ready, step forward.").classes("threshold-text")
+                    ui.markdown(
+                        "The room is quiet. When you are ready, step forward."
+                    ).classes("threshold-text")
+
                     async def advance():
                         await asyncio.sleep(2)
                         state["scene"] = "arrival"
                         state["_ui_version"] = ver + 1
+
                     asyncio.create_task(advance())
 
         # ---- Arrival ----
@@ -92,12 +104,14 @@ async def main_page():
             with container:
                 with ui.element("div").classes("scene active arrival-scene"):
                     ui.markdown("# TAROCCHAI").classes("title-gold")
-                    ui.markdown("A reading that moves from your hands into the world.").classes("subtitle")
+                    ui.markdown(
+                        "A reading that moves from your hands into the world."
+                    ).classes("subtitle")
                     pwd_input = ui.input(
                         "The word to enter",
                         placeholder="Whisper the password…",
                         password=True,
-                        password_toggle_button=True
+                        password_toggle_button=True,
                     ).classes("w-64")
                     pwd_label = ui.markdown("").classes("text-sm text-red-400")
 
@@ -116,14 +130,19 @@ async def main_page():
                             state["chat_messages"] = [("assistant", opener)]
                         state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                    ui.button("Sit with me.", on_click=lambda _: asyncio.create_task(try_enter())).classes("primary")
+                    ui.button(
+                        "Sit with me.",
+                        on_click=lambda _: asyncio.create_task(try_enter()),
+                    ).classes("primary")
 
         # ---- Waiting Room ----
         elif current == "waiting":
             with container:
                 with ui.element("div").classes("scene active waiting-scene"):
                     ui.element("div").classes("hexagram pulsating")
-                    ui.markdown("The Oracle is with another. Wait in the quiet. You will be seen.").classes("threshold-text")
+                    ui.markdown(
+                        "The Oracle is with another. Wait in the quiet. You will be seen."
+                    ).classes("threshold-text")
                     ui.spinner("dots").classes("mt-4")
 
                     async def wait_loop():
@@ -149,7 +168,9 @@ async def main_page():
                         css_class = "chat-ai" if sender == "assistant" else "chat-user"
                         label = "Reader" if sender == "assistant" else "You"
                         with messages_box:
-                            ui.markdown(f"**{label}:** {text}").classes(f"chat-message {css_class}")
+                            ui.markdown(f"**{label}:** {text}").classes(
+                                f"chat-message {css_class}"
+                            )
 
                     with ui.row().classes("chat-input-row"):
                         chat_input = ui.input(placeholder="...").classes("chat-input")
@@ -166,6 +187,7 @@ async def main_page():
 
                             async def call():
                                 return await interviewers[cid].conversation_turn(text)
+
                             reply = await ollama_queue.submit(call())
                             messages.append(("assistant", reply))
                             state["_ui_version"] = state.get("_ui_version", 0) + 1
@@ -174,14 +196,28 @@ async def main_page():
                                 state["scene"] = "mirror"
                             state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                        ui.button("→", on_click=lambda _: asyncio.create_task(send_intake())).classes("send-btn")
+                        ui.button(
+                            "→", on_click=lambda _: asyncio.create_task(send_intake())
+                        ).classes("send-btn")
 
         # ---- Mirror ----
         elif current == "mirror":
             with container:
                 with ui.element("div").classes("scene active mirror-scene"):
-                    ui.element("div").classes("mirror-card-back")
-                    ui.markdown("Look at the card. What does your eye touch first? Don't think. Just the first thing.").classes("mirror-prompt")
+                    # Show real card-back image if it exists, otherwise CSS placeholder
+                    import os as _os
+
+                    card_back_path = _os.path.join(
+                        _os.path.dirname(__file__), "static", "img", "card_back.png"
+                    )
+                    if _os.path.exists(card_back_path):
+                        ui.image("static/img/card_back.png").classes("mirror-card-back")
+                    else:
+                        ui.element("div").classes("mirror-card-back")
+
+                    ui.markdown(
+                        "Look at the card. What does your eye touch first? Don't think. Just the first thing."
+                    ).classes("mirror-prompt")
                     mirror_input = ui.input(placeholder="...").classes("chat-input")
 
                     async def send_mirror():
@@ -189,11 +225,15 @@ async def main_page():
                         if not value:
                             return
                         state["mirror_response"] = value
-                        state["spread_data"] = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
+                        state["spread_data"] = draw_cards(
+                            num_cards=3, positions=["Past", "Present", "Future"]
+                        )
                         state["scene"] = "spread"
                         state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                    ui.button("→", on_click=lambda _: asyncio.create_task(send_mirror())).classes("send-btn")
+                    ui.button(
+                        "→", on_click=lambda _: asyncio.create_task(send_mirror())
+                    ).classes("send-btn")
 
         # ---- Spread ----
         elif current == "spread":
@@ -207,8 +247,20 @@ async def main_page():
                             card = ui.card().classes("spread-card")
                             card.style(f"animation-delay: {i * 0.15}s")
                             with card:
-                                ui.markdown(f"**{entry['position']}**").classes("card-label")
-                                ui.markdown(f"### {entry['card']['name']}").classes("card-name")
+                                ui.markdown(f"**{entry['position']}**").classes(
+                                    "card-label"
+                                )
+                                # --- Replace the next line ---
+                                card_filename = sanitize_filename(entry["card"]["name"])
+                                card_img_path = os.path.join(
+                                    "static", "img", "cards", card_filename
+                                )
+                                if os.path.exists(card_img_path):
+                                    ui.image(card_img_path).classes("spread-card-image")
+                                else:
+                                    ui.markdown(f"### {entry['card']['name']}").classes(
+                                        "card-name"
+                                    )
 
                     async def reveal():
                         state["scene"] = "reading"
@@ -225,6 +277,7 @@ async def main_page():
                             ):
                                 full += chunk
                             return full
+
                         state["full_reading"] = await ollama_queue.submit(stream())
                         state["scene"] = "curtain"
                         state["_ui_version"] = state.get("_ui_version", 0) + 1
@@ -232,16 +285,44 @@ async def main_page():
                             sketch=sketch,
                             spread=spread,
                             reading=state["full_reading"],
-                            mirror=state.get("mirror_response", "")
+                            mirror=state.get("mirror_response", ""),
                         )
 
-                    ui.button("Tell me what's there.", on_click=lambda _: asyncio.create_task(reveal())).classes("primary")
+                    ui.button(
+                        "Tell me what's there.",
+                        on_click=lambda _: asyncio.create_task(reveal()),
+                    ).classes("primary")
 
         # ---- Reading + Curtain ----
         elif current in ("reading", "curtain"):
             reading_text = state.get("full_reading", "")
             with container:
                 with ui.element("div").classes("scene active reading-scene"):
+                    # ---- Cards visible during reading ----
+                    spread = state.get("spread_data", [])
+                    if spread:
+                        with ui.row().classes("reading-spread-row"):
+                            for entry in spread:
+                                with ui.element("div").classes("reading-mini-card"):
+                                    card_filename = sanitize_filename(
+                                        entry["card"]["name"]
+                                    )
+                                    card_img_path = os.path.join(
+                                        "static", "img", "cards", card_filename
+                                    )
+                                    if os.path.exists(card_img_path):
+                                        ui.image(card_img_path).classes(
+                                            "reading-mini-card-image"
+                                        )
+                                    else:
+                                        ui.markdown(
+                                            f"**{entry['position']}**\n\n### {entry['card']['name']}"
+                                        ).classes("card-label")
+                                    ui.markdown(entry["position"]).classes(
+                                        "reading-card-position"
+                                    )
+
+                    # ---- The reading text ----
                     ui.markdown("## The Telling").classes("section-heading")
                     if reading_text:
                         ui.markdown(reading_text).classes("reading-card")
@@ -249,17 +330,24 @@ async def main_page():
                         ui.spinner("dots")
                     if current == "curtain":
                         ui.markdown("---")
-                        ui.markdown("🎭 The cards are silent now. You may return, when you need to.").classes("curtain-message")
+                        ui.markdown(
+                            "🎭 The cards are silent now. You may return, when you need to."
+                        ).classes("curtain-message")
 
                         def restart():
                             app.storage.user.clear()
                             init_session()
-                            app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
+                            app.storage.user["_ui_version"] = (
+                                app.storage.user.get("_ui_version", 0) + 1
+                            )
 
-                        ui.button("Begin again", on_click=lambda _: restart()).classes("primary")
+                        ui.button("Begin again", on_click=lambda _: restart()).classes(
+                            "primary"
+                        )
 
     # Timer runs continuously but only rebuilds when version changes
     ui.timer(0.2, render)
+
 
 # ------------------------------------------------------------
 # Launch
