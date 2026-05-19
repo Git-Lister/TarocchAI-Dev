@@ -1,5 +1,5 @@
 /* ============================================================
-   TarocchAI – House Style: Gritty Sacred
+   TarocchAI – House Style: Gritty Sacred (v2)
    ============================================================ */
 :root {
   --bg-deep: #0b0a07;
@@ -12,9 +12,19 @@
   --vermilion: #8b3a3a;
   --font-display: 'Cinzel', 'Georgia', serif;
   --font-body: 'Crimson Text', 'Times New Roman', serif;
+  --transition-speed: 0.6s;
+  --ease-curtain: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Noise texture over everything */
+/* ---------- Global Layout Fixes ---------- */
+body, #app, .nicegui-layout, .q-layout, .q-page-container, .q-page {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ---------- Noise texture over everything ---------- */
 body::before {
   content: "";
   position: fixed;
@@ -32,7 +42,7 @@ body {
   overflow: hidden;
 }
 
-/* Scene management */
+/* ---------- Scene Management ---------- */
 .scene {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
@@ -42,7 +52,7 @@ body {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--transition-speed) var(--ease-curtain);
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -51,7 +61,7 @@ body {
   pointer-events: auto;
 }
 
-/* Hexagram emblem */
+/* ---------- Hexagram Emblem ---------- */
 .hexagram {
   width: 60px; height: 60px;
   background: var(--gold-mid);
@@ -65,7 +75,7 @@ body {
   100% { opacity: 0.4; }
 }
 
-/* Threshold */
+/* ---------- Threshold ---------- */
 .threshold-text {
   font-family: var(--font-body);
   font-size: 1.2rem;
@@ -73,13 +83,14 @@ body {
   text-align: center;
 }
 
-/* Arrival */
+/* ---------- Arrival ---------- */
 .title-gold {
   font-family: var(--font-display);
   font-size: 3rem;
   letter-spacing: 0.15em;
   color: var(--gold-bright);
   margin-bottom: 0.5rem;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
 }
 .subtitle {
   font-size: 1.1rem;
@@ -87,7 +98,7 @@ body {
   color: var(--text-body);
 }
 
-/* Buttons */
+/* ---------- Buttons ---------- */
 button.primary {
   background: rgba(184, 155, 75, 0.1);
   border: 1px solid var(--gold-mid);
@@ -98,15 +109,21 @@ button.primary {
   letter-spacing: 0.08em;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
 }
 button.primary:hover {
   background: rgba(184, 155, 75, 0.3);
+  box-shadow: 0 0 15px rgba(184, 155, 75, 0.4);
 }
 
-/* Intake chat */
+/* ---------- Intake Chat ---------- */
 .intake-scene, .mirror-scene { justify-content: flex-start; padding-top: 4rem; }
-.section-heading { font-family: var(--font-display); color: var(--gold-mid); margin-bottom: 1.5rem; }
+.section-heading {
+  font-family: var(--font-display);
+  color: var(--gold-mid);
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+}
 .chat-messages {
   width: 100%; max-width: 650px;
   max-height: 55vh; overflow-y: auto;
@@ -130,17 +147,37 @@ button.primary:hover {
   align-self: flex-end;
   text-align: right;
 }
-.chat-input-row { width: 100%; max-width: 650px; display: flex; gap: 0.5rem; align-items: center; }
-.chat-input { flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--gold-dim); color: var(--text-body); font-family: var(--font-body); padding: 0.5rem; }
-.send-btn { background: transparent; border: none; color: var(--gold-mid); font-size: 1.5rem; padding: 0 0.5rem; cursor: pointer; }
+.chat-input-row {
+  width: 100%; max-width: 650px;
+  display: flex; gap: 0.5rem; align-items: center;
+}
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--gold-dim);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  padding: 0.5rem;
+}
+.send-btn {
+  background: transparent;
+  border: none;
+  color: var(--gold-mid);
+  font-size: 1.5rem;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.send-btn:hover { color: var(--gold-bright); }
 
-/* Mirror card */
+/* ---------- Mirror Card ---------- */
 .mirror-card-back {
   width: 180px; height: 270px;
   background: var(--bg-parchment);
   border: 2px solid var(--gold-mid);
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 15px rgba(184,155,75,0.15);
   margin: 1.5rem 0;
   position: relative;
   animation: wobble 0.4s ease-out;
@@ -157,40 +194,103 @@ button.primary:hover {
   75% { transform: rotate(1deg); }
   100% { transform: rotate(0deg); }
 }
-.mirror-prompt { max-width: 500px; text-align: center; margin-bottom: 1rem; }
+.mirror-prompt {
+  max-width: 500px; text-align: center; margin-bottom: 1rem;
+  font-size: 1rem; color: var(--text-body);
+}
 
-/* Spread */
-.spread-row { display: flex; gap: 1.5rem; justify-content: center; margin: 2rem 0; }
+/* ---------- Spread Cards ---------- */
+.spread-row {
+  display: flex; gap: 1.5rem; justify-content: center; margin: 2rem 0;
+}
 .spread-card {
   background: var(--bg-parchment);
   border: 1px solid var(--gold-dim);
   border-radius: 8px;
-  padding: 1.5rem;
-  min-width: 160px;
+  padding: 1rem;
+  min-width: 200px;
+  max-width: 240px;
+  flex: 1;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 10px rgba(184,155,75,0.1);
+  animation: slideUp 0.5s var(--ease-curtain) both;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.spread-card:hover {
+  border-color: var(--gold-mid);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 18px rgba(184,155,75,0.25);
 }
 @keyframes slideUp {
   0% { opacity: 0; transform: translateY(40px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.card-label { font-family: var(--font-display); font-size: 0.75rem; letter-spacing: 0.1em; color: var(--gold-bright); }
-.card-name { font-family: var(--font-display); font-size: 1.2rem; color: var(--text-heading); margin-top: 0.5rem; }
+.card-label {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--gold-bright);
+  margin-bottom: 0.25rem;
+}
+.card-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-heading);
+  margin-top: 0.25rem;
+}
+.spread-card-image {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  margin-top: 0.25rem;
+}
 
-/* Reading */
-.reading-scene { justify-content: flex-start; padding-top: 3rem; }
+/* ---------- Reading Scene ---------- */
+.reading-scene {
+  justify-content: flex-start;
+  padding-top: 2rem;
+}
+/* Mini card display during reading */
+.reading-spread-row {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.reading-mini-card {
+  width: 100px;
+  text-align: center;
+}
+.reading-mini-card-image {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.reading-card-position {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  color: var(--gold-mid);
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 .reading-card {
   max-width: 700px; width: 100%;
   background: rgba(30, 27, 20, 0.8);
   border: 1px solid var(--gold-dim);
   padding: 2rem;
   border-radius: 10px;
-  max-height: 60vh; overflow-y: auto;
+  max-height: 55vh; overflow-y: auto;
   line-height: 1.7;
   font-family: var(--font-body);
 }
-.curtain-message { margin-top: 2rem; font-style: italic; color: var(--text-body); opacity: 0.7; }
+.curtain-message {
+  margin-top: 2rem;
+  font-style: italic;
+  color: var(--text-body);
+  opacity: 0.7;
+}
 
-/* Spinner */
+/* ---------- Spinner ---------- */
 .q-spinner-dots { color: var(--gold-mid); }
