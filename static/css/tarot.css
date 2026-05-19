@@ -291,6 +291,13 @@ button.primary:hover {
   color: var(--text-body);
   opacity: 0.7;
 }
+<<<<<<< HEAD
 
 /* ---------- Spinner ---------- */
 .q-spinner-dots { color: var(--gold-mid); }
+=======
+
+/* ---------- Spinner ---------- */
+.q-spinner-dots { color: var(--gold-mid); }
+
+>>>>>>> 17250b877ec505da25409b33fef8db37aadc8bb6
