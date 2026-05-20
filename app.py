@@ -26,12 +26,63 @@ ui.add_head_html("""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
-  /* dark radial background */
+  /* dark radial background – candle‑lit room */
   body {
     margin: 0;
     overflow: hidden;
-    background: radial-gradient(ellipse at center, #1a1408 0%, #0b0a07 70%);
+    background: radial-gradient(ellipse at 50% 80%, #2a1a06 0%, #0b0a07 60%);
     font-family: 'Crimson Text', 'Georgia', serif;
+  }
+
+  /* candle flame container – fixed, centered at the bottom */
+  .candle-container {
+    position: fixed;
+    bottom: 12vh;
+    left: 50%;
+    transform: translate(-50%, 0);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+  }
+  .candle-flame {
+    width: 24px; height: 48px;
+    background: radial-gradient(ellipse at 50% 30%, #f4d03f, #e67e22 60%, transparent 80%);
+    border-radius: 50% 50% 40% 40%;
+    position: relative;
+    animation: flicker 0.15s infinite alternate;
+    box-shadow: 0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3);
+  }
+  .candle-wick {
+    width: 3px; height: 18px;
+    background: #333;
+    margin-bottom: -4px;
+    border-radius: 2px;
+  }
+  .candle-body {
+    width: 28px; height: 60px;
+    background: linear-gradient(to bottom, #f5deb3, #d4a76a);
+    border-radius: 4px 4px 10px 10px;
+    margin-top: -2px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  }
+
+  @keyframes flicker {
+    0% { transform: scaleY(1) scaleX(1); opacity: 0.9; }
+    100% { transform: scaleY(1.15) scaleX(0.95); opacity: 1; }
+  }
+  @keyframes flicker-fast {
+    0% { transform: scaleY(1.1) scaleX(0.9); opacity: 0.7; }
+    100% { transform: scaleY(1.35) scaleX(0.8); opacity: 1; }
+  }
+  @keyframes brighten {
+    0% { box-shadow: 0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3); }
+    100% { box-shadow: 0 0 120px rgba(255,220,80,1), 0 0 200px rgba(255,160,40,0.8); }
+  }
+  @keyframes snuff {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.1); box-shadow: none; }
   }
 
   /* console panel – fixed overlay, always centered */
@@ -42,6 +93,8 @@ ui.add_head_html("""
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 650px;
+    max-height: 85vh;
+    overflow-y: auto;
     background: rgba(16,14,10,0.92);
     border: 1px solid #b89b4b;
     border-radius: 12px;
@@ -61,6 +114,59 @@ ui.add_head_html("""
   .chat-user { background:rgba(255,255,255,0.06); align-self:flex-end; text-align:right; }
   .card-img { width:100%; border-radius:8px; }
 </style>
+
+<!-- candle markup (hidden by default, revealed by the threshold scene) -->
+<div class="candle-container" id="candle">
+  <div class="candle-flame" id="flame"></div>
+  <div class="candle-wick"></div>
+  <div class="candle-body"></div>
+</div>
+
+<script>
+  // --- candle controller (called from NiceGUI via run_javascript) ---
+  const flame = document.getElementById('flame');
+  const candle = document.getElementById('candle');
+
+  function candle_ignite() {
+    candle.style.display = 'flex';
+    flame.style.animation = 'flicker 0.15s infinite alternate';
+    flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)';
+  }
+  function candle_flicker() {
+    flame.style.animation = 'flicker-fast 0.08s infinite alternate';
+    setTimeout(() => {
+      flame.style.animation = 'flicker 0.15s infinite alternate';
+    }, 1200);
+  }
+  function candle_brighten() {
+    flame.style.animation = 'brighten 1.5s ease-out forwards';
+    setTimeout(() => {
+      flame.style.animation = 'flicker 0.15s infinite alternate';
+    }, 1500);
+  }
+  function candle_snuff() {
+    flame.style.animation = 'snuff 0.8s ease-in forwards';
+    setTimeout(() => {
+      candle.style.display = 'none';
+    }, 800);
+  }
+  function snap_sound() {
+    // tiny snap using Web Audio – a short burst of noise
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buffer = ctx.createBuffer(1, 1024, 44100);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < 1024; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200);
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.start(0);
+      setTimeout(() => ctx.close(), 500);
+    } catch(e) {}
+  }
+</script>
 """)
 
 # ------------------------------------------------------------
@@ -99,7 +205,8 @@ def bump_ui():
 # ------------------------------------------------------------
 @ui.page("/")
 async def main_page():
-    client_id = ui.context.client.id
+    client = ui.context.client  # <-- add this line
+    client_id = client.id
     app.storage.user["client_id"] = client_id
 
     panel = (
@@ -140,6 +247,7 @@ async def main_page():
 
                 async def advance():
                     await asyncio.sleep(2)
+                    client.run_javascript("snap_sound(); candle_ignite();")
                     state["scene"] = "arrival"
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
 
@@ -227,9 +335,8 @@ async def main_page():
                     msgs.append(("user", t))
                     inp.value = ""
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
-                    reply = await ollama_queue.submit(
-                        interviewers[cid].conversation_turn(t)
-                    )
+                    client.run_javascript("candle_flicker();")
+                    reply = await ollama_queue.submit(interviewers[cid].conversation_turn(t))
                     msgs.append(("assistant", reply))
                     if interviewers[cid].is_complete:
                         state["sketch"] = interviewers[cid].situational_sketch
@@ -266,6 +373,7 @@ async def main_page():
                     state["mirror_response"] = v
                     state["spread_data"] = draw_cards(3, ["Past", "Present", "Future"])
                     state["scene"] = "spread"
+                    client.run_javascript("candle_brighten();")
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
 
                 ui.button(
@@ -343,6 +451,10 @@ async def main_page():
                 else:
                     ui.spinner("dots").style("color:#b89b4b;")
                 if current == "curtain":
+                    # Only trigger once
+                    if not state.get("_snuffed"):
+                        client.run_javascript("snap_sound(); candle_snuff();")
+                        state["_snuffed"] = True
                     ui.label("---").style("color:#b89b4b; text-align:center;")
                     ui.label(
                         "The cards are silent now. You may return, when you need to."
