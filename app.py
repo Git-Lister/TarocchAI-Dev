@@ -24,25 +24,22 @@ interviewers = {}
 # ------------------------------------------------------------
 ui.add_head_html("""
 <style>
-  /* force Quasar content area to be a flex centering container */
-  .q-page, .nicegui-content, body {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  /* remove any weird Quasar padding */
-  .q-page-container, .q-layout { padding: 0 !important; }
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
   /* dark radial background */
   body {
-    background: radial-gradient(ellipse at center, #1a1408 0%, #0b0a07 70%) !important;
+    margin: 0;
+    overflow: hidden;
+    background: radial-gradient(ellipse at center, #1a1408 0%, #0b0a07 70%);
     font-family: 'Crimson Text', 'Georgia', serif;
   }
-  /* console panel */
+
+  /* console panel – fixed overlay, always centered */
   .console-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 90%;
     max-width: 650px;
     background: rgba(16,14,10,0.92);
@@ -51,7 +48,9 @@ ui.add_head_html("""
     padding: 2rem;
     box-shadow: 0 0 30px rgba(184,155,75,0.2);
     color: #d9d0c1;
+    z-index: 1000;
   }
+
   .gold-text { color:#d4af37; font-family:'Cinzel',serif; letter-spacing:0.05em; }
   .body-text { color:#d9d0c1; font-family:'Crimson Text',serif; }
   .input-field { width:100%; background:transparent; border:none; border-bottom:1px solid rgba(184,155,75,0.3); color:#d9d0c1; padding:0.5rem; margin:1rem 0; }
@@ -61,8 +60,6 @@ ui.add_head_html("""
   .chat-ai { background:rgba(184,155,75,0.08); border:1px solid rgba(184,155,75,0.2); align-self:flex-start; }
   .chat-user { background:rgba(255,255,255,0.06); align-self:flex-end; text-align:right; }
   .card-img { width:100%; border-radius:8px; }
-  /* Google Fonts */
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 </style>
 """)
 
@@ -78,16 +75,19 @@ PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
 @app.get("/")
 def init_session():
     app.storage.user.clear()
-    app.storage.user.update({
-        "scene": "threshold",
-        "spread_data": [],
-        "mirror_response": "",
-        "full_reading": "",
-        "authenticated": False,
-        "chat_messages": [],
-        "client_id": "",
-        "_ui_version": 0,             # incremented whenever the UI should rebuild
-    })
+    app.storage.user.update(
+        {
+            "scene": "threshold",
+            "spread_data": [],
+            "mirror_response": "",
+            "full_reading": "",
+            "authenticated": False,
+            "chat_messages": [],
+            "client_id": "",
+            "_ui_version": 0,
+        }
+    )
+
 
 @app.post("/")
 def bump_ui():
@@ -102,10 +102,19 @@ async def main_page():
     client_id = ui.context.client.id
     app.storage.user["client_id"] = client_id
 
-    panel = ui.element("div").classes("console-panel")
+    panel = (
+        ui.element("div")
+        .classes("console-panel")
+        .style(
+            "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); "
+            "width: 90%; max-width: 650px; z-index: 1000;"
+        )
+    )
     last_version = -1
 
     def render():
+        import os as _os
+
         nonlocal last_version
         state = app.storage.user
         ver = state.get("_ui_version", 0)
@@ -118,29 +127,40 @@ async def main_page():
 
         # --- Threshold ---
         if current == "threshold":
-            with container:
-                with ui.element("div").classes("scene active threshold-scene"):
-                    ui.element("div").classes("hexagram")
-                    ui.markdown("The room is quiet. When you are ready, step forward.").classes("threshold-text")
-                    async def advance():
-                        await asyncio.sleep(2)
-                        state["scene"] = "arrival"
-                        state["_ui_version"] = ver + 1
-                    asyncio.create_task(advance())
+            with panel:
+                ui.markdown("# ✦").style(
+                    "text-align:center; color:#d4af37; font-size:3rem;"
+                )
+                ui.label("The room is quiet.").classes("body-text").style(
+                    "text-align:center; font-size:1.2rem;"
+                )
+                ui.label("When you are ready, step forward.").classes(
+                    "body-text"
+                ).style("text-align:center;")
+
+                async def advance():
+                    await asyncio.sleep(2)
+                    state["scene"] = "arrival"
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
+
+                asyncio.create_task(advance())
 
         # --- Arrival ---
         elif current == "arrival":
-            with container:
-                with ui.element("div").classes("scene active arrival-scene"):
-                    ui.markdown("# TAROCCHAI").classes("title-gold")
-                    ui.markdown("A reading that moves from your hands into the world.").classes("subtitle")
-                    pwd_input = ui.input(
-                        "The word to enter",
-                        placeholder="Whisper the password…",
-                        password=True,
-                        password_toggle_button=True
-                    ).classes("w-64")
-                    pwd_label = ui.markdown("").classes("text-sm text-red-400")
+            with panel:
+                ui.label("TAROCCHAI").classes("gold-text").style(
+                    "font-size:2.5rem; text-align:center;"
+                )
+                ui.label(
+                    "A reading that moves from your hands into the world."
+                ).classes("body-text").style("text-align:center;")
+                pwd = ui.input(
+                    "The word to enter",
+                    placeholder="Whisper the password…",
+                    password=True,
+                    password_toggle_button=True,
+                ).classes("input-field")
+                pwd_label = ui.label("").style("color:#8b3a3a; text-align:center;")
 
                 async def enter():
                     if PASSWORD and pwd.value != PASSWORD:
@@ -154,15 +174,20 @@ async def main_page():
                         state["chat_messages"] = [("assistant", opener)]
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                    ui.button("Sit with me.", on_click=lambda _: asyncio.create_task(try_enter())).classes("primary")
+                ui.button(
+                    "Sit with me.", on_click=lambda: asyncio.create_task(enter())
+                ).classes("btn-gold")
 
         # --- Waiting ---
         elif current == "waiting":
-            with container:
-                with ui.element("div").classes("scene active waiting-scene"):
-                    ui.element("div").classes("hexagram pulsating")
-                    ui.markdown("The Oracle is with another. Wait in the quiet. You will be seen.").classes("threshold-text")
-                    ui.spinner("dots").classes("mt-4")
+            with panel:
+                ui.spinner("dots").style("color:#b89b4b;")
+                ui.label("The Oracle is with another.").classes("body-text").style(
+                    "text-align:center;"
+                )
+                ui.label("Wait in the quiet. You will be seen.").classes(
+                    "body-text"
+                ).style("text-align:center;")
 
                 async def wait():
                     while ollama_queue.is_busy:
@@ -178,123 +203,161 @@ async def main_page():
 
         # --- Intake ---
         elif current == "intake":
-            messages = state.get("chat_messages", [])
-            with container:
-                with ui.element("div").classes("scene active intake-scene"):
-                    ui.markdown("## The Listening").classes("section-heading")
-                    messages_box = ui.column().classes("chat-messages")
-                    for sender, text in messages:
-                        css_class = "chat-ai" if sender == "assistant" else "chat-user"
-                        label = "Reader" if sender == "assistant" else "You"
-                        with messages_box:
-                            ui.markdown(f"**{label}:** {text}").classes(f"chat-message {css_class}")
+            msgs = state.get("chat_messages", [])
+            with panel:
+                ui.label("The Listening").classes("gold-text").style(
+                    "font-size:1.5rem; margin-bottom:1rem;"
+                )
+                chat_box = ui.column()
+                for sender, text in msgs:
+                    cls = "chat-ai" if sender == "assistant" else "chat-user"
+                    lbl = "Reader" if sender == "assistant" else "You"
+                    with chat_box:
+                        ui.label(f"{lbl}: {text}").classes(f"chat-msg {cls}").style(
+                            "white-space:pre-wrap;"
+                        )
+                inp = ui.input(placeholder="...").classes("input-field")
 
-                    with ui.row().classes("chat-input-row"):
-                        chat_input = ui.input(placeholder="...").classes("chat-input")
+                async def send():
+                    if cid not in interviewers:
+                        return
+                    t = inp.value.strip()
+                    if not t:
+                        return
+                    msgs.append(("user", t))
+                    inp.value = ""
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
+                    reply = await ollama_queue.submit(
+                        interviewers[cid].conversation_turn(t)
+                    )
+                    msgs.append(("assistant", reply))
+                    if interviewers[cid].is_complete:
+                        state["sketch"] = interviewers[cid].situational_sketch
+                        state["scene"] = "mirror"
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                        async def send_intake():
-                            if cid not in interviewers:
-                                return
-                            text = chat_input.value.strip()
-                            if not text:
-                                return
-                            messages.append(("user", text))
-                            chat_input.value = ""
-                            state["_ui_version"] = state.get("_ui_version", 0) + 1
-
-                            async def call():
-                                return await interviewers[cid].conversation_turn(text)
-                            reply = await ollama_queue.submit(call())
-                            messages.append(("assistant", reply))
-                            state["_ui_version"] = state.get("_ui_version", 0) + 1
-                            if interviewers[cid].is_complete:
-                                state["sketch"] = interviewers[cid].situational_sketch
-                                state["scene"] = "mirror"
-                            state["_ui_version"] = state.get("_ui_version", 0) + 1
-
-                        ui.button("→", on_click=lambda _: asyncio.create_task(send_intake())).classes("send-btn")
+                ui.button("→", on_click=lambda: asyncio.create_task(send())).classes(
+                    "btn-gold"
+                )
 
         # --- Mirror ---
         elif current == "mirror":
-            with container:
-                with ui.element("div").classes("scene active mirror-scene"):
-                    ui.element("div").classes("mirror-card-back")
-                    ui.markdown("Look at the card. What does your eye touch first? Don't think. Just the first thing.").classes("mirror-prompt")
-                    mirror_input = ui.input(placeholder="...").classes("chat-input")
+            with panel:
+                card_back = _os.path.join(
+                    _os.path.dirname(__file__), "static", "img", "card_back.png"
+                )
+                if _os.path.exists(card_back):
+                    ui.image("static/img/card_back.png").style(
+                        "width:180px; height:270px; margin:0 auto; border-radius:8px; box-shadow:0 0 15px rgba(184,155,75,0.3);"
+                    )
+                else:
+                    ui.element("div").style(
+                        "width:180px; height:270px; background:#1e1b14; border:2px solid #b89b4b; margin:0 auto; border-radius:8px;"
+                    )
+                ui.label("What does your eye touch first?").classes("body-text").style(
+                    "text-align:center; margin-top:1rem;"
+                )
+                mir_inp = ui.input(placeholder="...").classes("input-field")
 
-                    async def send_mirror():
-                        value = mirror_input.value.strip()
-                        if not value:
-                            return
-                        state["mirror_response"] = value
-                        state["spread_data"] = draw_cards(num_cards=3, positions=["Past", "Present", "Future"])
-                        state["scene"] = "spread"
-                        state["_ui_version"] = state.get("_ui_version", 0) + 1
+                async def mir_send():
+                    v = mir_inp.value.strip()
+                    if not v:
+                        return
+                    state["mirror_response"] = v
+                    state["spread_data"] = draw_cards(3, ["Past", "Present", "Future"])
+                    state["scene"] = "spread"
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                    ui.button("→", on_click=lambda _: asyncio.create_task(send_mirror())).classes("send-btn")
+                ui.button(
+                    "→", on_click=lambda: asyncio.create_task(mir_send())
+                ).classes("btn-gold")
 
         # --- Spread ---
         elif current == "spread":
             spread = state.get("spread_data", [])
-            with container:
-                with ui.element("div").classes("scene active spread-scene"):
-                    ui.markdown("## The Fall").classes("section-heading")
-                    spread_row = ui.row().classes("spread-row")
-                    for i, entry in enumerate(spread):
-                        with spread_row:
-                            card = ui.card().classes("spread-card")
-                            card.style(f"animation-delay: {i * 0.15}s")
-                            with card:
-                                ui.markdown(f"**{entry['position']}**").classes("card-label")
-                                ui.markdown(f"### {entry['card']['name']}").classes("card-name")
+            with panel:
+                ui.label("The Fall").classes("gold-text").style(
+                    "font-size:1.5rem; margin-bottom:1rem;"
+                )
+                row = ui.row().style("justify-content:center; gap:1rem;")
+                for entry in spread:
+                    with row:
+                        with ui.card().style(
+                            "background:#1e1b14; border:1px solid #b89b4b; padding:1rem; text-align:center; width:200px;"
+                        ):
+                            ui.label(entry["position"]).style(
+                                "color:#d4af37; font-size:0.8rem; letter-spacing:0.1em;"
+                            )
+                            fname = sanitize_filename(entry["card"]["name"])
+                            img_path = _os.path.join("static", "img", "cards", fname)
+                            if _os.path.exists(img_path):
+                                ui.image(img_path).classes("card-img")
+                            else:
+                                ui.label(entry["card"]["name"]).style(
+                                    "color:#e8ddc4; font-size:1.2rem;"
+                                )
 
-                    async def reveal():
-                        state["scene"] = "reading"
-                        state["_ui_version"] = state.get("_ui_version", 0) + 1
-                        reader = TarotReader()
-                        sketch = state.get("sketch", "")
+                async def reveal():
+                    state["scene"] = "reading"
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
+                    reader = TarotReader()
+                    sketch = state.get("sketch", "")
+                    full = ""
+                    async for chunk in reader.stream_reading(sketch, spread):
+                        full += chunk
+                    state["full_reading"] = full
+                    state["scene"] = "curtain"
+                    save_session(sketch, spread, full, state.get("mirror_response", ""))
+                    state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                        async def stream():
-                            full = ""
-                            async for chunk in reader.stream_reading(
-                                situational_sketch=sketch,
-                                drawn_cards=spread,
-                                spread_name="Past-Present-Future",
-                            ):
-                                full += chunk
-                            return full
-                        state["full_reading"] = await ollama_queue.submit(stream())
-                        state["scene"] = "curtain"
-                        state["_ui_version"] = state.get("_ui_version", 0) + 1
-                        save_session(
-                            sketch=sketch,
-                            spread=spread,
-                            reading=state["full_reading"],
-                            mirror=state.get("mirror_response", "")
-                        )
-
-                    ui.button("Tell me what's there.", on_click=lambda _: asyncio.create_task(reveal())).classes("primary")
+                ui.button(
+                    "Tell me what's there.",
+                    on_click=lambda: asyncio.create_task(reveal()),
+                ).classes("btn-gold")
 
         # --- Reading + Curtain ---
         elif current in ("reading", "curtain"):
-            reading_text = state.get("full_reading", "")
-            with container:
-                with ui.element("div").classes("scene active reading-scene"):
-                    ui.markdown("## The Telling").classes("section-heading")
-                    if reading_text:
-                        ui.markdown(reading_text).classes("reading-card")
-                    else:
-                        ui.spinner("dots")
-                    if current == "curtain":
-                        ui.markdown("---")
-                        ui.markdown("🎭 The cards are silent now. You may return, when you need to.").classes("curtain-message")
+            reading = state.get("full_reading", "")
+            with panel:
+                spread = state.get("spread_data", [])
+                if spread:
+                    mini_row = ui.row().style(
+                        "justify-content:center; gap:0.5rem; margin-bottom:1rem;"
+                    )
+                    for entry in spread:
+                        with mini_row:
+                            fname = sanitize_filename(entry["card"]["name"])
+                            img_path = _os.path.join("static", "img", "cards", fname)
+                            if _os.path.exists(img_path):
+                                ui.image(img_path).style(
+                                    "width:80px; border-radius:6px;"
+                                )
+                            ui.label(entry["position"]).style(
+                                "color:#b89b4b; font-size:0.7rem; text-align:center;"
+                            )
+                ui.label("The Telling").classes("gold-text").style("font-size:1.5rem;")
+                if reading:
+                    ui.markdown(reading).style(
+                        "color:#d9d0c1; max-height:50vh; overflow-y:auto; padding:1rem; background:rgba(30,27,20,0.8); border-radius:8px;"
+                    )
+                else:
+                    ui.spinner("dots").style("color:#b89b4b;")
+                if current == "curtain":
+                    ui.label("---").style("color:#b89b4b; text-align:center;")
+                    ui.label(
+                        "The cards are silent now. You may return, when you need to."
+                    ).style("color:#d9d0c1; font-style:italic; text-align:center;")
 
-                        def restart():
-                            app.storage.user.clear()
-                            init_session()
-                            app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
+                    def restart():
+                        app.storage.user.clear()
+                        init_session()
+                        app.storage.user["_ui_version"] = (
+                            app.storage.user.get("_ui_version", 0) + 1
+                        )
 
-                        ui.button("Begin again", on_click=lambda _: restart()).classes("primary")
+                    ui.button("Begin again", on_click=lambda: restart()).classes(
+                        "btn-gold"
+                    )
 
     ui.timer(0.2, render)
 
