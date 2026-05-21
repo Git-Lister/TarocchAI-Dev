@@ -46,7 +46,6 @@ ui.add_head_html("""
     width:28px; height:60px; background:linear-gradient(to bottom, #f5deb3, #d4a76a);
     border-radius:4px 4px 10px 10px; margin-top:-2px; box-shadow:0 4px 8px rgba(0,0,0,0.4);
   }
-
   @keyframes flicker {
     0% { transform:scaleY(1) scaleX(1); opacity:0.9; }
     100% { transform:scaleY(1.15) scaleX(0.95); opacity:1; }
@@ -63,7 +62,6 @@ ui.add_head_html("""
     0% { opacity:1; transform:scale(1); }
     100% { opacity:0; transform:scale(0.1); box-shadow:none; }
   }
-
   .console-panel {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
     width: 90%; max-width: 650px; max-height: 75vh; overflow-y: auto;
@@ -84,10 +82,14 @@ ui.add_head_html("""
 """)
 
 # ------------------------------------------------------------
-# CANDLE MARKUP + SCRIPTS – body (executed immediately)
+# CANDLE HTML (body only, no scripts)
 # ------------------------------------------------------------
 ui.add_body_html("""
-ui.add_head_html('<script src="/static/js/candle.js"></script>'
+<div class="candle-container" id="candle" style="display:none">
+  <div class="candle-flame" id="flame"></div>
+  <div class="candle-wick"></div>
+  <div class="candle-body"></div>
+</div>
 """)
 
 # ------------------------------------------------------------
@@ -129,6 +131,62 @@ async def main_page():
     client = ui.context.client
     client_id = client.id
     app.storage.user["client_id"] = client_id
+
+    # Inject candle functions globally (fire-and-forget, no await)
+    client.run_javascript("""
+        window.audioCtx = null;
+        window.unlockAudio = function() {
+            if (!window.audioCtx) {
+                window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (window.audioCtx.state === 'suspended') window.audioCtx.resume();
+            }
+        };
+        window.snap_sound = function() {
+            if (!window.audioCtx) return;
+            const buffer = window.audioCtx.createBuffer(1, 1024, 44100);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < 1024; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200);
+            }
+            const src = window.audioCtx.createBufferSource();
+            src.buffer = buffer;
+            src.connect(window.audioCtx.destination);
+            src.start(0);
+        };
+        window.candle_ignite = function() {
+            const candle = document.getElementById('candle');
+            const flame = document.getElementById('flame');
+            if (!candle || !flame) return;
+            candle.style.display = 'flex';
+            flame.style.animation = 'flicker 0.15s infinite alternate';
+            flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)';
+        };
+        window.candle_flicker = function() {
+            const flame = document.getElementById('flame');
+            if (!flame) return;
+            flame.style.animation = 'flicker-fast 0.08s infinite alternate';
+            setTimeout(function() {
+                if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
+            }, 1200);
+        };
+        window.candle_brighten = function() {
+            const flame = document.getElementById('flame');
+            if (!flame) return;
+            flame.style.animation = 'brighten 1.5s ease-out forwards';
+            setTimeout(function() {
+                if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
+            }, 1500);
+        };
+        window.candle_snuff = function() {
+            const candle = document.getElementById('candle');
+            const flame = document.getElementById('flame');
+            if (!candle || !flame) return;
+            flame.style.animation = 'snuff 0.8s ease-in forwards';
+            setTimeout(function() {
+                if (candle) candle.style.display = 'none';
+            }, 800);
+        };
+    """)
 
     panel = (
         ui.element("div")

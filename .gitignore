@@ -66,6 +66,7 @@ logs/
 htmlcov/
 .tox/
 .hypothesis/
+.nicegui
 
 # Temporary files
 *.tmp
