@@ -1,4 +1,4 @@
-"""TarocchAI – Console Oracle (v8 – candle visible, panel fixed)"""
+"""TarocchAI – Console Oracle (v9 – silent question, name gate, reset)"""
 
 import asyncio
 import os
@@ -20,7 +20,7 @@ from engine.reading.interpreter import TarotReader
 interviewers = {}
 
 # ------------------------------------------------------------
-# STYLES – head only
+# STYLES – head only (candle + panel + all UI)
 # ------------------------------------------------------------
 ui.add_head_html("""
 <style>
@@ -32,7 +32,7 @@ ui.add_head_html("""
   }
   .candle-container {
     position: fixed; bottom: 12vh; left: 50%; transform: translate(-50%,0);
-    z-index: 1100; display: flex; flex-direction: column; align-items: center;
+    z-index: 1100; display: none; flex-direction: column; align-items: center;
     pointer-events: none;
   }
   .candle-flame {
@@ -77,15 +77,16 @@ ui.add_head_html("""
   .chat-ai { background:rgba(184,155,75,0.08); border:1px solid rgba(184,155,75,0.2); align-self:flex-start; }
   .chat-user { background:rgba(255,255,255,0.06); align-self:flex-end; text-align:right; }
   .card-img { width:100%; border-radius:8px; }
-  .spread-stack { display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+  .faint-link { color: rgba(184,155,75,0.5); font-size:0.8rem; cursor:pointer; text-align:center; margin-top:1rem; }
+  .faint-link:hover { color: #b89b4b; }
 </style>
 """)
 
 # ------------------------------------------------------------
-# CANDLE HTML (body only, no scripts)
+# CANDLE HTML (body only)
 # ------------------------------------------------------------
 ui.add_body_html("""
-<div class="candle-container" id="candle" style="display:none">
+<div class="candle-container" id="candle">
   <div class="candle-flame" id="flame"></div>
   <div class="candle-wick"></div>
   <div class="candle-body"></div>
@@ -93,7 +94,7 @@ ui.add_body_html("""
 """)
 
 # ------------------------------------------------------------
-# Password
+# Password / Name Gate
 # ------------------------------------------------------------
 PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
 
@@ -113,6 +114,7 @@ def init_session():
             "authenticated": False,
             "chat_messages": [],
             "client_id": "",
+            "querent_name": "",
             "_ui_version": 0,
         }
     )
@@ -132,61 +134,26 @@ async def main_page():
     client_id = client.id
     app.storage.user["client_id"] = client_id
 
-    # Inject candle functions globally (fire-and-forget, no await)
-    client.run_javascript("""
-        window.audioCtx = null;
-        window.unlockAudio = function() {
-            if (!window.audioCtx) {
-                window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (window.audioCtx.state === 'suspended') window.audioCtx.resume();
-            }
-        };
-        window.snap_sound = function() {
-            if (!window.audioCtx) return;
-            const buffer = window.audioCtx.createBuffer(1, 1024, 44100);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < 1024; i++) {
-                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200);
-            }
-            const src = window.audioCtx.createBufferSource();
-            src.buffer = buffer;
-            src.connect(window.audioCtx.destination);
-            src.start(0);
-        };
-        window.candle_ignite = function() {
-            const candle = document.getElementById('candle');
-            const flame = document.getElementById('flame');
-            if (!candle || !flame) return;
-            candle.style.display = 'flex';
-            flame.style.animation = 'flicker 0.15s infinite alternate';
-            flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)';
-        };
-        window.candle_flicker = function() {
-            const flame = document.getElementById('flame');
-            if (!flame) return;
-            flame.style.animation = 'flicker-fast 0.08s infinite alternate';
-            setTimeout(function() {
-                if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
-            }, 1200);
-        };
-        window.candle_brighten = function() {
-            const flame = document.getElementById('flame');
-            if (!flame) return;
-            flame.style.animation = 'brighten 1.5s ease-out forwards';
-            setTimeout(function() {
-                if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
-            }, 1500);
-        };
-        window.candle_snuff = function() {
-            const candle = document.getElementById('candle');
-            const flame = document.getElementById('flame');
-            if (!candle || !flame) return;
-            flame.style.animation = 'snuff 0.8s ease-in forwards';
-            setTimeout(function() {
-                if (candle) candle.style.display = 'none';
-            }, 800);
-        };
-    """)
+    # Inject candle functions (small chunks, fire‑and‑forget)
+    client.run_javascript("window.audioCtx = null;")
+    client.run_javascript(
+        "window.unlockAudio = function() { if (!window.audioCtx) { window.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (window.audioCtx.state === 'suspended') window.audioCtx.resume(); } };"
+    )
+    client.run_javascript(
+        "window.snap_sound = function() { if (!window.audioCtx) return; const buffer = window.audioCtx.createBuffer(1, 1024, 44100); const data = buffer.getChannelData(0); for (let i = 0; i < 1024; i++) { data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200); } const src = window.audioCtx.createBufferSource(); src.buffer = buffer; src.connect(window.audioCtx.destination); src.start(0); };"
+    )
+    client.run_javascript(
+        "window.candle_ignite = function() { const candle = document.getElementById('candle'); const flame = document.getElementById('flame'); if (!candle || !flame) return; candle.style.display = 'flex'; flame.style.animation = 'flicker 0.15s infinite alternate'; flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)'; };"
+    )
+    client.run_javascript(
+        "window.candle_flicker = function() { const flame = document.getElementById('flame'); if (!flame) return; flame.style.animation = 'flicker-fast 0.08s infinite alternate'; setTimeout(function() { if (flame) flame.style.animation = 'flicker 0.15s infinite alternate'; }, 1200); };"
+    )
+    client.run_javascript(
+        "window.candle_brighten = function() { const flame = document.getElementById('flame'); if (!flame) return; flame.style.animation = 'brighten 1.5s ease-out forwards'; setTimeout(function() { if (flame) flame.style.animation = 'flicker 0.15s infinite alternate'; }, 1500); };"
+    )
+    client.run_javascript(
+        "window.candle_snuff = function() { const candle = document.getElementById('candle'); const flame = document.getElementById('flame'); if (!candle || !flame) return; flame.style.animation = 'snuff 0.8s ease-in forwards'; setTimeout(function() { if (candle) candle.style.display = 'none'; }, 800); };"
+    )
 
     panel = (
         ui.element("div")
@@ -198,6 +165,12 @@ async def main_page():
         )
     )
     last_version = -1
+
+    def restart_session():
+        """Reset the session and return to threshold."""
+        app.storage.user.clear()
+        init_session()
+        app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
 
     def render():
         import os as _os
@@ -236,27 +209,30 @@ async def main_page():
                     "Step forward.", on_click=lambda: asyncio.create_task(step())
                 ).classes("btn-gold").style("display:block; margin:1rem auto 0;")
 
-        # --- Arrival ---
+        # --- Arrival (name gate) ---
         elif current == "arrival":
             with panel:
                 ui.label("TAROCCHAI").classes("gold-text").style(
                     "font-size:2.5rem; text-align:center;"
                 )
                 ui.label(
-                    "A reading that moves from your hands into the world."
-                ).classes("body-text").style("text-align:center;")
-                pwd = ui.input(
-                    "The word to enter",
-                    placeholder="Whisper the password…",
-                    password=True,
-                    password_toggle_button=True,
+                    "The mud settles. The water clears. What brought you here—keep it behind your eyes."
+                ).classes("body-text").style("text-align:center; font-style:italic;")
+                name_input = ui.input(
+                    "What do they call you?", placeholder="Your name, or any name…"
                 ).classes("input-field")
                 pwd_label = ui.label("").style("color:#8b3a3a; text-align:center;")
 
                 async def enter():
-                    if PASSWORD and pwd.value != PASSWORD:
-                        pwd_label.text = "The room is not ready for you."
+                    name = name_input.value.strip()
+                    if not name:
+                        pwd_label.text = "Even a stranger has a name."
                         return
+                    # If a password is set, enforce it
+                    if PASSWORD and name_input.value != PASSWORD:
+                        pwd_label.text = "That is not the name I was given."
+                        return
+                    state["querent_name"] = name
                     state["authenticated"] = True
                     state["scene"] = "waiting" if ollama_queue.is_busy else "intake"
                     if state["scene"] == "intake":
@@ -295,9 +271,11 @@ async def main_page():
         # --- Intake ---
         elif current == "intake":
             msgs = state.get("chat_messages", [])
+            name = state.get("querent_name", "friend")
             with panel:
+                ui.label(f"{name}.").classes("gold-text").style("font-size:1.5rem;")
                 ui.label("The Listening").classes("gold-text").style(
-                    "font-size:1.5rem; margin-bottom:1rem;"
+                    "font-size:1.2rem; margin-bottom:1rem;"
                 )
                 chat_box = ui.column()
                 for sender, text in msgs:
@@ -453,16 +431,15 @@ async def main_page():
                         "The cards are silent now. You may return, when you need to."
                     ).style("color:#d9d0c1; font-style:italic; text-align:center;")
 
-                    def restart():
-                        app.storage.user.clear()
-                        init_session()
-                        app.storage.user["_ui_version"] = (
-                            app.storage.user.get("_ui_version", 0) + 1
-                        )
-
-                    ui.button("Begin again", on_click=lambda: restart()).classes(
-                        "btn-gold"
-                    ).style("display:block; margin:1rem auto 1.5rem;")
+        # --- Common reset link (all scenes except threshold) ---
+        if current != "threshold":
+            with panel:
+                ui.separator().style("margin-top:1rem;")
+                ui.button("Start anew", on_click=lambda: restart_session()).classes(
+                    "btn-gold"
+                ).style(
+                    "font-size:0.8rem; opacity:0.5; display:block; margin:0.5rem auto 0;"
+                )
 
     ui.timer(0.2, render)
 
