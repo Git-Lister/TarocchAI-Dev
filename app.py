@@ -1,4 +1,4 @@
-"""TarocchAI – Console Oracle (v4 – fully centered)"""
+"""TarocchAI – Console Oracle (v8 – candle visible, panel fixed)"""
 
 import asyncio
 import os
@@ -20,90 +20,56 @@ from engine.reading.interpreter import TarotReader
 interviewers = {}
 
 # ------------------------------------------------------------
-# GLOBAL CENTERING STYLES – inject directly into <head>
+# STYLES – head only
 # ------------------------------------------------------------
 ui.add_head_html("""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-
-  /* dark radial background – candle‑lit room */
   body {
-    margin: 0;
-    overflow: hidden;
+    margin: 0; overflow: hidden;
     background: radial-gradient(ellipse at 50% 80%, #2a1a06 0%, #0b0a07 60%);
     font-family: 'Crimson Text', 'Georgia', serif;
   }
-
-  /* candle flame container – fixed, centered at the bottom */
   .candle-container {
-    position: fixed;
-    bottom: 12vh;
-    left: 50%;
-    transform: translate(-50%, 0);
-    z-index: 500;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    position: fixed; bottom: 12vh; left: 50%; transform: translate(-50%,0);
+    z-index: 1100; display: flex; flex-direction: column; align-items: center;
     pointer-events: none;
   }
   .candle-flame {
     width: 24px; height: 48px;
     background: radial-gradient(ellipse at 50% 30%, #f4d03f, #e67e22 60%, transparent 80%);
-    border-radius: 50% 50% 40% 40%;
-    position: relative;
-    animation: flicker 0.15s infinite alternate;
+    border-radius: 50% 50% 40% 40%; position: relative;
     box-shadow: 0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3);
   }
-  .candle-wick {
-    width: 3px; height: 18px;
-    background: #333;
-    margin-bottom: -4px;
-    border-radius: 2px;
-  }
+  .candle-wick { width:3px; height:18px; background:#333; margin-bottom:-4px; border-radius:2px; }
   .candle-body {
-    width: 28px; height: 60px;
-    background: linear-gradient(to bottom, #f5deb3, #d4a76a);
-    border-radius: 4px 4px 10px 10px;
-    margin-top: -2px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    width:28px; height:60px; background:linear-gradient(to bottom, #f5deb3, #d4a76a);
+    border-radius:4px 4px 10px 10px; margin-top:-2px; box-shadow:0 4px 8px rgba(0,0,0,0.4);
   }
 
   @keyframes flicker {
-    0% { transform: scaleY(1) scaleX(1); opacity: 0.9; }
-    100% { transform: scaleY(1.15) scaleX(0.95); opacity: 1; }
+    0% { transform:scaleY(1) scaleX(1); opacity:0.9; }
+    100% { transform:scaleY(1.15) scaleX(0.95); opacity:1; }
   }
   @keyframes flicker-fast {
-    0% { transform: scaleY(1.1) scaleX(0.9); opacity: 0.7; }
-    100% { transform: scaleY(1.35) scaleX(0.8); opacity: 1; }
+    0% { transform:scaleY(1.1) scaleX(0.9); opacity:0.7; }
+    100% { transform:scaleY(1.35) scaleX(0.8); opacity:1; }
   }
   @keyframes brighten {
-    0% { box-shadow: 0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3); }
-    100% { box-shadow: 0 0 120px rgba(255,220,80,1), 0 0 200px rgba(255,160,40,0.8); }
+    0% { box-shadow:0 0 40px rgba(255,180,50,0.6),0 0 80px rgba(255,120,20,0.3); }
+    100% { box-shadow:0 0 120px rgba(255,220,80,1),0 0 200px rgba(255,160,40,0.8); }
   }
   @keyframes snuff {
-    0% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(0.1); box-shadow: none; }
+    0% { opacity:1; transform:scale(1); }
+    100% { opacity:0; transform:scale(0.1); box-shadow:none; }
   }
 
-  /* console panel – fixed overlay, always centered */
   .console-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 650px;
-    max-height: 85vh;
-    overflow-y: auto;
-    background: rgba(16,14,10,0.92);
-    border: 1px solid #b89b4b;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 0 30px rgba(184,155,75,0.2);
-    color: #d9d0c1;
-    z-index: 1000;
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 90%; max-width: 650px; max-height: 75vh; overflow-y: auto;
+    background: rgba(16,14,10,0.92); border: 1px solid #b89b4b; border-radius: 12px;
+    padding: 2rem; box-shadow: 0 0 30px rgba(184,155,75,0.2); color: #d9d0c1; z-index: 900;
   }
-
   .gold-text { color:#d4af37; font-family:'Cinzel',serif; letter-spacing:0.05em; }
   .body-text { color:#d9d0c1; font-family:'Crimson Text',serif; }
   .input-field { width:100%; background:transparent; border:none; border-bottom:1px solid rgba(184,155,75,0.3); color:#d9d0c1; padding:0.5rem; margin:1rem 0; }
@@ -113,60 +79,15 @@ ui.add_head_html("""
   .chat-ai { background:rgba(184,155,75,0.08); border:1px solid rgba(184,155,75,0.2); align-self:flex-start; }
   .chat-user { background:rgba(255,255,255,0.06); align-self:flex-end; text-align:right; }
   .card-img { width:100%; border-radius:8px; }
+  .spread-stack { display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
 </style>
+""")
 
-<!-- candle markup (hidden by default, revealed by the threshold scene) -->
-<div class="candle-container" id="candle">
-  <div class="candle-flame" id="flame"></div>
-  <div class="candle-wick"></div>
-  <div class="candle-body"></div>
-</div>
-
-<script>
-  // --- candle controller (called from NiceGUI via run_javascript) ---
-  const flame = document.getElementById('flame');
-  const candle = document.getElementById('candle');
-
-  function candle_ignite() {
-    candle.style.display = 'flex';
-    flame.style.animation = 'flicker 0.15s infinite alternate';
-    flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)';
-  }
-  function candle_flicker() {
-    flame.style.animation = 'flicker-fast 0.08s infinite alternate';
-    setTimeout(() => {
-      flame.style.animation = 'flicker 0.15s infinite alternate';
-    }, 1200);
-  }
-  function candle_brighten() {
-    flame.style.animation = 'brighten 1.5s ease-out forwards';
-    setTimeout(() => {
-      flame.style.animation = 'flicker 0.15s infinite alternate';
-    }, 1500);
-  }
-  function candle_snuff() {
-    flame.style.animation = 'snuff 0.8s ease-in forwards';
-    setTimeout(() => {
-      candle.style.display = 'none';
-    }, 800);
-  }
-  function snap_sound() {
-    // tiny snap using Web Audio – a short burst of noise
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const buffer = ctx.createBuffer(1, 1024, 44100);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < 1024; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200);
-      }
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(ctx.destination);
-      src.start(0);
-      setTimeout(() => ctx.close(), 500);
-    } catch(e) {}
-  }
-</script>
+# ------------------------------------------------------------
+# CANDLE MARKUP + SCRIPTS – body (executed immediately)
+# ------------------------------------------------------------
+ui.add_body_html("""
+ui.add_head_html('<script src="/static/js/candle.js"></script>'
 """)
 
 # ------------------------------------------------------------
@@ -176,7 +97,7 @@ PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
 
 
 # ------------------------------------------------------------
-# State init (runs once per session)
+# State init
 # ------------------------------------------------------------
 @app.get("/")
 def init_session():
@@ -205,7 +126,7 @@ def bump_ui():
 # ------------------------------------------------------------
 @ui.page("/")
 async def main_page():
-    client = ui.context.client  # <-- add this line
+    client = ui.context.client
     client_id = client.id
     app.storage.user["client_id"] = client_id
 
@@ -213,8 +134,9 @@ async def main_page():
         ui.element("div")
         .classes("console-panel")
         .style(
-            "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); "
-            "width: 90%; max-width: 650px; z-index: 1000;"
+            "position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); "
+            "width: 90%; max-width: 650px; max-height: 75vh; overflow-y: auto; "
+            "padding: 2rem 2rem 3rem 2rem; z-index: 1000;"
         )
     )
     last_version = -1
@@ -232,7 +154,7 @@ async def main_page():
         current = state.get("scene", "threshold")
         cid = state.get("client_id", "")
 
-        # --- Threshold ---
+        # --- Threshold (click to advance) ---
         if current == "threshold":
             with panel:
                 ui.markdown("# ✦").style(
@@ -245,13 +167,16 @@ async def main_page():
                     "body-text"
                 ).style("text-align:center;")
 
-                async def advance():
-                    await asyncio.sleep(2)
-                    client.run_javascript("snap_sound(); candle_ignite();")
+                async def step():
+                    client.run_javascript(
+                        "unlockAudio(); snap_sound(); candle_ignite();"
+                    )
                     state["scene"] = "arrival"
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
 
-                asyncio.create_task(advance())
+                ui.button(
+                    "Step forward.", on_click=lambda: asyncio.create_task(step())
+                ).classes("btn-gold").style("display:block; margin:1rem auto 0;")
 
         # --- Arrival ---
         elif current == "arrival":
@@ -284,7 +209,7 @@ async def main_page():
 
                 ui.button(
                     "Sit with me.", on_click=lambda: asyncio.create_task(enter())
-                ).classes("btn-gold")
+                ).classes("btn-gold").style("display:block; margin:1rem auto 0;")
 
         # --- Waiting ---
         elif current == "waiting":
@@ -336,7 +261,9 @@ async def main_page():
                     inp.value = ""
                     state["_ui_version"] = state.get("_ui_version", 0) + 1
                     client.run_javascript("candle_flicker();")
-                    reply = await ollama_queue.submit(interviewers[cid].conversation_turn(t))
+                    reply = await ollama_queue.submit(
+                        interviewers[cid].conversation_turn(t)
+                    )
                     msgs.append(("assistant", reply))
                     if interviewers[cid].is_complete:
                         state["sketch"] = interviewers[cid].situational_sketch
@@ -345,7 +272,7 @@ async def main_page():
 
                 ui.button("→", on_click=lambda: asyncio.create_task(send())).classes(
                     "btn-gold"
-                )
+                ).style("display:block; margin:1rem auto 0;")
 
         # --- Mirror ---
         elif current == "mirror":
@@ -355,11 +282,11 @@ async def main_page():
                 )
                 if _os.path.exists(card_back):
                     ui.image("static/img/card_back.png").style(
-                        "width:180px; height:270px; margin:0 auto; border-radius:8px; box-shadow:0 0 15px rgba(184,155,75,0.3);"
+                        "width: 60%; max-width: 300px; height: auto; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 0 15px rgba(184,155,75,0.3);"
                     )
                 else:
                     ui.element("div").style(
-                        "width:180px; height:270px; background:#1e1b14; border:2px solid #b89b4b; margin:0 auto; border-radius:8px;"
+                        "width: 60%; max-width: 300px; height: 0; padding-bottom: 90%; background: #1e1b14; border: 2px solid #b89b4b; margin: 0 auto; border-radius: 8px; position: relative;"
                     )
                 ui.label("What does your eye touch first?").classes("body-text").style(
                     "text-align:center; margin-top:1rem;"
@@ -378,7 +305,7 @@ async def main_page():
 
                 ui.button(
                     "→", on_click=lambda: asyncio.create_task(mir_send())
-                ).classes("btn-gold")
+                ).classes("btn-gold").style("display:block; margin:1rem auto 0;")
 
         # --- Spread ---
         elif current == "spread":
@@ -394,7 +321,7 @@ async def main_page():
                             "background:#1e1b14; border:1px solid #b89b4b; padding:1rem; text-align:center; width:200px;"
                         ):
                             ui.label(entry["position"]).style(
-                                "color:#d4af37; font-size:0.8rem; letter-spacing:0.1em;"
+                                "color:#d4af37; font-size:0.8rem; letter-spacing:0.1em; text-align: center; width: 100%; display: block;"
                             )
                             fname = sanitize_filename(entry["card"]["name"])
                             img_path = _os.path.join("static", "img", "cards", fname)
@@ -421,7 +348,7 @@ async def main_page():
                 ui.button(
                     "Tell me what's there.",
                     on_click=lambda: asyncio.create_task(reveal()),
-                ).classes("btn-gold")
+                ).classes("btn-gold").style("display:block; margin:1rem auto 0;")
 
         # --- Reading + Curtain ---
         elif current in ("reading", "curtain"):
@@ -430,19 +357,28 @@ async def main_page():
                 spread = state.get("spread_data", [])
                 if spread:
                     mini_row = ui.row().style(
-                        "justify-content:center; gap:0.5rem; margin-bottom:1rem;"
+                        "justify-content:center; gap:1rem; margin-bottom:1rem;"
                     )
                     for entry in spread:
                         with mini_row:
-                            fname = sanitize_filename(entry["card"]["name"])
-                            img_path = _os.path.join("static", "img", "cards", fname)
-                            if _os.path.exists(img_path):
-                                ui.image(img_path).style(
-                                    "width:80px; border-radius:6px;"
+                            with ui.card().style(
+                                "background:#1e1b14; border:1px solid #b89b4b; padding:0.8rem; text-align:center; width: 28%; max-width: 180px;"
+                            ):
+                                ui.label(entry["position"]).style(
+                                    "color:#d4af37; font-size:0.7rem; letter-spacing:0.1em; text-align: center; width: 100%; display: block;"
                                 )
-                            ui.label(entry["position"]).style(
-                                "color:#b89b4b; font-size:0.7rem; text-align:center;"
-                            )
+                                fname = sanitize_filename(entry["card"]["name"])
+                                img_path = _os.path.join(
+                                    "static", "img", "cards", fname
+                                )
+                                if _os.path.exists(img_path):
+                                    ui.image(img_path).style(
+                                        "width:100%; height:auto; border-radius:6px;"
+                                    )
+                                else:
+                                    ui.label(entry["card"]["name"]).style(
+                                        "color:#e8ddc4; font-size:0.9rem;"
+                                    )
                 ui.label("The Telling").classes("gold-text").style("font-size:1.5rem;")
                 if reading:
                     ui.markdown(reading).style(
@@ -451,7 +387,6 @@ async def main_page():
                 else:
                     ui.spinner("dots").style("color:#b89b4b;")
                 if current == "curtain":
-                    # Only trigger once
                     if not state.get("_snuffed"):
                         client.run_javascript("snap_sound(); candle_snuff();")
                         state["_snuffed"] = True
@@ -469,7 +404,7 @@ async def main_page():
 
                     ui.button("Begin again", on_click=lambda: restart()).classes(
                         "btn-gold"
-                    )
+                    ).style("display:block; margin:1rem auto 1.5rem;")
 
     ui.timer(0.2, render)
 
