@@ -205,3 +205,40 @@ body::before {
 ::-webkit-scrollbar-track { background: #0b0a07; }
 ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold-mid); }
+
+/* Materializing text effect */
+.materializing-char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+    transition: opacity 0.2s ease-out, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 0 8px rgba(212, 175, 55, 0.1);
+}
+.materializing-char.revealed {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 12px rgba(212, 175, 55, 0.05);
+}
+
+/* Materializing text effect */
+.materializing-char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+    transition: opacity 0.2s ease-out, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 0 8px rgba(212, 175, 55, 0.1);
+}
+.materializing-char.revealed {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 12px rgba(212, 175, 55, 0.05);
+}
+
+/* User input focus state */
+#user-input:focus {
+    border-bottom-color: rgba(184, 155, 75, 0.6);
+}
+#user-input::placeholder {
+    color: rgba(184, 155, 75, 0.2);
+    font-style: italic;
+}
