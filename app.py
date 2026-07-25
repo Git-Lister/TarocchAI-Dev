@@ -1,28 +1,39 @@
-"""TarocchAI — Backend API Server (serving static HTML frontend)"""
+"""TarocchAI — Backend API Server (serving embedded HTML)"""
 
-import asyncio
-import os
 import secrets
 
 from nicegui import app, ui
 
 from config import MODEL_NAME
+from engine.data_store import save_session
 from engine.intake.interviewer import IntakeInterviewer
 from engine.ollama_queue import ollama_queue
 from engine.reading.drawer import draw_cards
 from engine.reading.interpreter import TarotReader
-from engine.data_store import save_session
+
 
 # ------------------------------------------------------------
-# Serve the static HTML at the root
+# Serve the HTML with embedded CSS and JS
 # ------------------------------------------------------------
 @ui.page("/")
 def main():
-    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
+    # Load the HTML structure (no script tags, no style tags)
     with open("static/index.html", "r", encoding="utf-8") as f:
-        ui.html(f.read())
-    # Optional: make NiceGUI serve static files from /static
-    # It does this automatically if the folder exists.
+        html_content = f.read()
+
+    # Add CSS directly via head
+    with open("static/css/tarot.css", "r", encoding="utf-8") as f:
+        css_content = f.read()
+    ui.add_head_html(f"<style>{css_content}</style>")
+
+    # Add JavaScript directly via body
+    with open("static/js/tarot.js", "r", encoding="utf-8") as f:
+        js_content = f.read()
+    ui.add_body_html(f"<script>{js_content}</script>")
+
+    # Serve the HTML (which now has CSS and JS injected separately)
+    ui.html(html_content)
+
 
 # ------------------------------------------------------------
 # API Endpoints (for the frontend to call)
@@ -30,6 +41,7 @@ def main():
 
 # Storage for interviewers per session
 interviewers = {}
+
 
 @app.post("/api/intake/start")
 async def start_intake(data: dict):
@@ -39,6 +51,7 @@ async def start_intake(data: dict):
     interviewers[session_id] = interviewer
     opener = await interviewer.start()
     return {"opener": opener, "turn": 0}
+
 
 @app.post("/api/intake/turn")
 async def intake_turn(data: dict):
@@ -51,11 +64,8 @@ async def intake_turn(data: dict):
     reply = await ollama_queue.submit(interviewer.conversation_turn(user_message))
     is_complete = interviewer.is_complete
     sketch = interviewer.situational_sketch if is_complete else ""
-    return {
-        "reply": reply,
-        "is_complete": is_complete,
-        "sketch": sketch
-    }
+    return {"reply": reply, "is_complete": is_complete, "sketch": sketch}
+
 
 @app.post("/api/reading/generate")
 async def generate_reading(data: dict):
@@ -64,28 +74,26 @@ async def generate_reading(data: dict):
     spread = data.get("spread", [])
     if not spread:
         spread = draw_cards(3, ["Past", "Present", "Future"])
-    
+
     reader = TarotReader()
     full_reading = ""
     async for chunk in reader.stream_reading(sketch, spread):
         full_reading += chunk
-    
+
     # Save to history
     save_session(sketch, spread, full_reading, data.get("mirror_response", ""))
-    
-    return {
-        "reading": full_reading,
-        "spread": spread
-    }
+
+    return {"reading": full_reading, "spread": spread}
+
 
 # ------------------------------------------------------------
 # Launch
 # ------------------------------------------------------------
-STORAGE_SECRET = os.getenv("TAROCCHAI_STORAGE_SECRET", secrets.token_hex(32))
+STORAGE_SECRET = secrets.token_hex(32)
 ui.run(
     title="TarocchAI",
     host="0.0.0.0",
     port=8080,
     dark=True,
-    storage_secret=STORAGE_SECRET
+    storage_secret=STORAGE_SECRET,
 )
