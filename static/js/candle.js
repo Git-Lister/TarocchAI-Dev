@@ -1,4 +1,4 @@
-// TarocchAI – Candle Controller & Audio
+// TarocchAI – Candle Controller & Audio (v2)
 window.audioCtx = null;
 
 window.unlockAudio = function() {
@@ -8,43 +8,49 @@ window.unlockAudio = function() {
   }
 };
 
-window.snap_sound = function() {
+// Gentle chime (not a snap)
+window.play_chime = function() {
   if (!window.audioCtx) return;
-  const buffer = window.audioCtx.createBuffer(1, 1024, 44100);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < 1024; i++) {
-    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200);
+  try {
+    const osc = window.audioCtx.createOscillator();
+    const gain = window.audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523, window.audioCtx.currentTime); // C5
+    gain.gain.setValueAtTime(0.3, window.audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, window.audioCtx.currentTime + 2);
+    osc.connect(gain);
+    gain.connect(window.audioCtx.destination);
+    osc.start(0);
+    osc.stop(window.audioCtx.currentTime + 2);
+  } catch(e) {
+    console.warn('Chime failed:', e);
   }
-  const src = window.audioCtx.createBufferSource();
-  src.buffer = buffer;
-  src.connect(window.audioCtx.destination);
-  src.start(0);
 };
 
 window.candle_ignite = function() {
   const candle = document.getElementById('candle');
   const flame = document.getElementById('flame');
   if (!candle || !flame) return;
-  candle.style.display = 'flex';
-  flame.style.animation = 'flicker 0.15s infinite alternate';
-  flame.style.boxShadow = '0 0 40px rgba(255,180,50,0.6), 0 0 80px rgba(255,120,20,0.3)';
+  candle.style.display = 'block';
+  flame.style.animation = 'flicker 0.12s infinite alternate, float 3s ease-in-out infinite';
+  flame.style.boxShadow = '0 0 60px rgba(255,180,50,0.7), 0 0 120px rgba(255,120,20,0.3)';
 };
 
 window.candle_flicker = function() {
   const flame = document.getElementById('flame');
   if (!flame) return;
-  flame.style.animation = 'flicker-fast 0.08s infinite alternate';
-  setTimeout(function() {
-    if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
-  }, 1200);
+  flame.style.animation = 'flicker-fast 0.06s infinite alternate, float 3s ease-in-out infinite';
+  setTimeout(() => {
+    if (flame) flame.style.animation = 'flicker 0.12s infinite alternate, float 3s ease-in-out infinite';
+  }, 1000);
 };
 
 window.candle_brighten = function() {
   const flame = document.getElementById('flame');
   if (!flame) return;
-  flame.style.animation = 'brighten 1.5s ease-out forwards';
-  setTimeout(function() {
-    if (flame) flame.style.animation = 'flicker 0.15s infinite alternate';
+  flame.style.animation = 'brighten 1.5s ease-out forwards, float 3s ease-in-out infinite';
+  setTimeout(() => {
+    if (flame) flame.style.animation = 'flicker 0.12s infinite alternate, float 3s ease-in-out infinite';
   }, 1500);
 };
 
@@ -53,7 +59,7 @@ window.candle_snuff = function() {
   const flame = document.getElementById('flame');
   if (!candle || !flame) return;
   flame.style.animation = 'snuff 0.8s ease-in forwards';
-  setTimeout(function() {
+  setTimeout(() => {
     if (candle) candle.style.display = 'none';
   }, 800);
 };

@@ -1,4 +1,4 @@
-"""TarocchAI – Console Oracle (v9 – silent question, name gate, reset)"""
+"""TarocchAI – Console Oracle (v10 – clean imports, combined withs, candle injection)"""
 
 import asyncio
 import os
@@ -83,17 +83,6 @@ ui.add_head_html("""
 """)
 
 # ------------------------------------------------------------
-# CANDLE HTML (body only)
-# ------------------------------------------------------------
-ui.add_body_html("""
-<div class="candle-container" id="candle">
-  <div class="candle-flame" id="flame"></div>
-  <div class="candle-wick"></div>
-  <div class="candle-body"></div>
-</div>
-""")
-
-# ------------------------------------------------------------
 # Password / Name Gate
 # ------------------------------------------------------------
 PASSWORD = os.getenv("TAROCCHAI_PASSWORD", "")
@@ -154,6 +143,15 @@ async def main_page():
     client.run_javascript(
         "window.candle_snuff = function() { const candle = document.getElementById('candle'); const flame = document.getElementById('flame'); if (!candle || !flame) return; flame.style.animation = 'snuff 0.8s ease-in forwards'; setTimeout(function() { if (candle) candle.style.display = 'none'; }, 800); };"
     )
+    # Create candle DOM element
+    client.run_javascript("""
+        var candleDiv = document.createElement('div');
+        candleDiv.id = 'candle';
+        candleDiv.className = 'candle-container';
+        candleDiv.style.display = 'none';
+        candleDiv.innerHTML = '<div class="candle-flame" id="flame"></div><div class="candle-wick"></div><div class="candle-body"></div>';
+        document.body.appendChild(candleDiv);
+    """)
 
     panel = (
         ui.element("div")
@@ -167,7 +165,6 @@ async def main_page():
     last_version = -1
 
     def restart_session():
-        """Reset the session and return to threshold."""
         app.storage.user.clear()
         init_session()
         app.storage.user["_ui_version"] = app.storage.user.get("_ui_version", 0) + 1
@@ -187,7 +184,7 @@ async def main_page():
 
         # --- Threshold (click to advance) ---
         if current == "threshold":
-            with panel:
+            with panel, ui.element("div").classes("scene active threshold-scene"):
                 ui.markdown("# ✦").style(
                     "text-align:center; color:#d4af37; font-size:3rem;"
                 )
@@ -211,7 +208,7 @@ async def main_page():
 
         # --- Arrival (name gate) ---
         elif current == "arrival":
-            with panel:
+            with panel, ui.element("div").classes("scene active arrival-scene"):
                 ui.label("TAROCCHAI").classes("gold-text").style(
                     "font-size:2.5rem; text-align:center;"
                 )
@@ -228,7 +225,6 @@ async def main_page():
                     if not name:
                         pwd_label.text = "Even a stranger has a name."
                         return
-                    # If a password is set, enforce it
                     if PASSWORD and name_input.value != PASSWORD:
                         pwd_label.text = "That is not the name I was given."
                         return
@@ -247,7 +243,7 @@ async def main_page():
 
         # --- Waiting ---
         elif current == "waiting":
-            with panel:
+            with panel, ui.element("div").classes("scene active waiting-scene"):
                 ui.spinner("dots").style("color:#b89b4b;")
                 ui.label("The Oracle is with another.").classes("body-text").style(
                     "text-align:center;"
@@ -272,7 +268,7 @@ async def main_page():
         elif current == "intake":
             msgs = state.get("chat_messages", [])
             name = state.get("querent_name", "friend")
-            with panel:
+            with panel, ui.element("div").classes("scene active intake-scene"):
                 ui.label(f"{name}.").classes("gold-text").style("font-size:1.5rem;")
                 ui.label("The Listening").classes("gold-text").style(
                     "font-size:1.2rem; margin-bottom:1rem;"
@@ -312,7 +308,7 @@ async def main_page():
 
         # --- Mirror ---
         elif current == "mirror":
-            with panel:
+            with panel, ui.element("div").classes("scene active mirror-scene"):
                 card_back = _os.path.join(
                     _os.path.dirname(__file__), "static", "img", "card_back.png"
                 )
@@ -346,7 +342,7 @@ async def main_page():
         # --- Spread ---
         elif current == "spread":
             spread = state.get("spread_data", [])
-            with panel:
+            with panel, ui.element("div").classes("scene active spread-scene"):
                 ui.label("The Fall").classes("gold-text").style(
                     "font-size:1.5rem; margin-bottom:1rem;"
                 )
@@ -389,7 +385,7 @@ async def main_page():
         # --- Reading + Curtain ---
         elif current in ("reading", "curtain"):
             reading = state.get("full_reading", "")
-            with panel:
+            with panel, ui.element("div").classes("scene active reading-scene"):
                 spread = state.get("spread_data", [])
                 if spread:
                     mini_row = ui.row().style(
