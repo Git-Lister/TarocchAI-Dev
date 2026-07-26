@@ -95,16 +95,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================================
 
     const READY_QUESTIONS = [
-        "Are you sitting comfortably?",
-        "Are you ready to begin?",
-        "Shall we look at the cards?",
-        "Is there something you wish to ask?",
-        "What brings you here tonight?",
-        "Have you brought a question with you?",
-        "Are you ready to see what the cards hold?",
-        "Shall we begin?",
-        "What would you like to ask the cards?",
-        "I am ready. Are you?"
+        "Embrace the flame when you are ready to begin.",
+        "Touch the candle's light to begin our journey.",
+        "When you are ready, let the candle know.",
+        "Reach for the flame when the question is clear.",
+        "The candle waits for your hand to begin.",
+        "Place your intention in the flame when you are ready.",
+        "Let the candle's light guide you forward — touch it when you are ready.",
+        "The flame is waiting. When you are ready, let it know.",
+        "I am here. The candle is here. When you are ready, touch the light.",
+        "Let us begin when you feel the warmth of the candle."
     ];
 
     // --------------------------------------------------------------

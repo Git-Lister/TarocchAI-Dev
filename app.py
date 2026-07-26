@@ -63,22 +63,17 @@ async def intake_turn(data: dict):
 
 @app.post("/api/reading/generate")
 async def generate_reading(data: dict):
-    """Generate a reading from the sketch."""
     sketch = data.get("sketch", "")
     spread = data.get("spread", [])
     if not spread:
         spread = draw_cards(3, ["Past", "Present", "Future"])
 
-    # Add image paths with proper mapping
+    # Generate image path from card name
     for entry in spread:
         card = entry["card"]
-        # Use the card ID to generate filename, or fallback to name
-        # The images use lowercase with underscores
-        name = card["name"].lower().replace(" ", "_").replace("-", "_")
-        # Handle special cases
-        if name == "the_hanged_man":
-            name = "the_hanged_man"
-        entry["image_path"] = f"/static/img/cards/{name}.png"
+        # Convert "Three of Pentacles" → "three_of_pentacles.png"
+        filename = card["name"].lower().replace(" ", "_").replace("-", "_") + ".png"
+        entry["image_path"] = f"/static/img/cards/{filename}"
 
     reader = TarotReader()
     full_reading = ""

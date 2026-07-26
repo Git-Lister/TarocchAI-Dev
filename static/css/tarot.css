@@ -246,14 +246,13 @@ body::before {
 /* ---------- VOICE AREA ---------- */
 .voice-area {
     width: 100%;
-    min-height: 2.5rem;
-    max-height: 8rem;
-    overflow-y: auto;
+    height: 80px;                  /* Fixed height instead of max-height */
+    overflow-y: auto;              /* Scroll when content exceeds height */
     text-align: center;
-    font-family: var(--font-body);
+    font-family: 'Crimson Text', serif;
     font-size: clamp(0.95rem, 1.4vw, 1.2rem);
     font-style: italic;
-    color: var(--text-body);
+    color: #d9d0c1;
     opacity: 0;
     transition: opacity 1s ease;
     text-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 60px rgba(0, 0, 0, 0.5);
@@ -262,24 +261,20 @@ body::before {
     pointer-events: none;
     scrollbar-width: thin;
     scrollbar-color: rgba(184, 155, 75, 0.2) transparent;
+    /* Ensure content doesn't break the box */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    /* Add a subtle scroll indicator */
+    background: linear-gradient(to bottom, transparent 90%, rgba(11, 10, 7, 0.3) 100%);
+    border-radius: 4px;
 }
 
 .voice-area.visible {
     opacity: 0.95;
 }
 
-.voice-area .cursor {
-    display: inline-block;
-    width: 2px;
-    height: 1.1em;
-    background: var(--gold-bright);
-    animation: blink 1s step-end infinite;
-    vertical-align: text-bottom;
-    margin-left: 2px;
-}
-
 .voice-area::-webkit-scrollbar {
-    width: 3px;
+    width: 4px;
 }
 .voice-area::-webkit-scrollbar-track {
     background: transparent;
@@ -287,6 +282,10 @@ body::before {
 .voice-area::-webkit-scrollbar-thumb {
     background: rgba(184, 155, 75, 0.2);
     border-radius: 4px;
+}
+
+.voice-area::-webkit-scrollbar-thumb:hover {
+    background: rgba(184, 155, 75, 0.4);
 }
 
 /* ---------- INPUT BAR ---------- */
