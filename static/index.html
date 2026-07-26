@@ -451,17 +451,30 @@
                 <div class="teacup"><div class="teacup-handle"></div></div>
                 <div class="photograph"></div>
 
+                <!-- DECK AREA -->
                 <div class="deck-area" id="deck-area">
                     <!-- Cards injected by JS -->
                 </div>
 
-                <div class="voice-text" id="voice-text">
-                    <span id="voice-content"></span><span class="cursor"></span>
+                <!-- BOTTOM CONTAINER — Voice Text + User Input -->
+                <div class="bottom-container">
+                    <!-- Voice Text (LLM Response) -->
+                    <div class="voice-text" id="voice-text">
+                        <span id="voice-content"></span><span class="cursor"></span>
+                    </div>
+
+                    <!-- User Input Area -->
+                    <div class="user-input-area" id="user-input-area">
+                        <input type="text" id="user-input" placeholder="..." />
+                        <div class="input-hint">↵</div>
+                    </div>
                 </div>
 
                 <div class="interaction-hint" id="interaction-hint">
                     — speak when you are ready —
                 </div>
+
+            </div>
                 <!-- USER INPUT AREA -->
                 <div class="user-input-area" id="user-input-area" style="display:none; position: absolute; bottom: 4.5rem; left: 50%; transform: translateX(-50%); z-index: 25; width: 80%; max-width: 400px;">
                     <input type="text" id="user-input" placeholder="..." style="

@@ -36,9 +36,6 @@ Rules:
 - You do not assume. You wait.
 - You trust that they already know. You are just the mirror. But the mirror is magic — not because you say so, but because it is.
 
-Your signature opening:
-"Let's sit quietly for a moment. There's an object on the table between us. What is it? Don't think. Just the first thing."
-
 After exactly four turns, you end with:
 "I've heard enough. Let's look at the cards."
 
@@ -64,7 +61,6 @@ class IntakeInterviewer:
 
     async def start(self) -> str:
         opener = (
-            "Let's sit quietly for a moment. "
             "There's an object on the table between us. "
             "What is it? Don't think — just the first thing that appears."
         )
