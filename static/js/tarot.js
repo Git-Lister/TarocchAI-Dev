@@ -347,19 +347,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // Spread and Reveal — With Real Card Images
+    // Spread and Reveal — With Real Card Images (Fixed)
     // --------------------------------------------------------------
     function spreadAndReveal(spreadData, callback) {
-        // spreadData is the array from the backend with card info
         if (!spreadData || spreadData.length === 0) {
             console.error('No spread data provided');
             return;
         }
 
-        // Clear the deck area
         deckArea.innerHTML = '';
 
-        // Create card elements for each position
         const positions = [
             { label: 'Past', offsetX: -120, offsetY: 0, rot: -3 },
             { label: 'Present', offsetX: 0, offsetY: 0, rot: 0 },
@@ -373,9 +370,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const pos = positions[index] || positions[0];
             const imagePath = entry.image_path || `/static/img/cards/default.png`;
 
-            // Create card element
+            console.log(`🃏 Creating card ${index}: ${card.name} → ${imagePath}`);
+
             const cardEl = document.createElement('div');
             cardEl.className = 'card';
+            // Set initial position and scale
             cardEl.style.cssText = `
                 position: absolute;
                 width: 90px;
@@ -387,37 +386,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 transform-style: preserve-3d;
             `;
 
-            // Card back (initially visible)
+            // Card Back
             const back = document.createElement('div');
             back.className = 'card-back';
             back.style.cssText = `
                 position: absolute;
-                top: 0; left: 0; width: 100%; height: 100%;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
                 background: radial-gradient(ellipse at 50% 50%, #1e1a14, #0f0c08);
                 border: 1px solid rgba(184, 155, 75, 0.15);
                 border-radius: 8px;
                 backface-visibility: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
                 background-image: repeating-linear-gradient(45deg, transparent 0px, transparent 6px, rgba(184, 155, 75, 0.02) 6px, rgba(184, 155, 75, 0.02) 7px);
             `;
-            // Add a subtle emblem
             const emblem = document.createElement('div');
             emblem.textContent = '✦';
-            emblem.style.cssText = `
-                position: absolute;
-                top: 50%; left: 50%;
-                transform: translate(-50%, -50%);
-                color: rgba(184, 155, 75, 0.08);
-                font-size: 2rem;
-                font-family: 'Cinzel', serif;
-            `;
+            emblem.style.cssText = `color: rgba(184, 155, 75, 0.08); font-size: 2rem; font-family: 'Cinzel', serif;`;
             back.appendChild(emblem);
 
-            // Card front (image)
+            // Card Front
             const front = document.createElement('div');
             front.className = 'card-front';
             front.style.cssText = `
                 position: absolute;
-                top: 0; left: 0; width: 100%; height: 100%;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
                 backface-visibility: hidden;
                 transform: rotateY(180deg);
                 border-radius: 8px;
@@ -429,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 align-items: center;
             `;
 
-            // Load the card image
+            // Create image element
             const img = document.createElement('img');
             img.src = imagePath;
             img.alt = card.name;
@@ -440,10 +436,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 border-radius: 8px;
                 display: block;
             `;
-            
-            // Handle image loading errors
+
+            // Handle successful load
+            img.onload = function() {
+                console.log('✅ Image loaded:', imagePath);
+            };
+
+            // Handle errors
             img.onerror = function() {
-                console.warn('⚠️ Image not found:', imagePath);
+                console.warn('⚠️ Image failed to load:', imagePath);
                 this.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.textContent = card.name;
@@ -455,34 +456,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     color: #d4af37;
                     text-align: center;
                     padding: 0.5rem;
-                    letter-spacing: 0.05em;
-                    line-height: 1.3;
                 `;
                 front.appendChild(fallback);
             };
-            
-            // When image loads successfully, log it
-            img.onload = function() {
-                console.log('✅ Image loaded:', imagePath);
-            };
-            
-            front.appendChild(img);
 
-            // Assemble card
+            front.appendChild(img);
             cardEl.appendChild(back);
             cardEl.appendChild(front);
             deckArea.appendChild(cardEl);
+
             cardElements.push({ el: cardEl, pos: pos, label: positions[index].label, card: card });
         });
 
         // Reveal the cards with a delay
         setTimeout(() => {
             cardElements.forEach((item, idx) => {
-                const el = item.el;
-                // Scale up and fade in
                 setTimeout(() => {
-                    el.style.opacity = '1';
-                    el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
+                    item.el.style.opacity = '1';
+                    item.el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
                 }, idx * 400);
             });
 
@@ -504,21 +495,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // Flip Card — With Real Card Image
+    // Flip Card — With Real Card Image (Fixed)
     // --------------------------------------------------------------
     function flipCardWithImage(cardEl, label, cardData) {
-        // Apply 3D flip
-        cardEl.style.transition = 'transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
-        // Get the current position
+        // The current transform includes translate and rotateZ
+        // We need to add rotateY(180deg) to show the front
         const currentTransform = cardEl.style.transform;
-        // Flip: add rotateY(180deg)
+        // Flip: add rotateY(180deg) — this reveals the front face
+        cardEl.style.transition = 'transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
         cardEl.style.transform = currentTransform + ' rotateY(180deg)';
         cardEl.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
 
-        // Brighten candle
         brightenCandle();
 
-        // Log the card
         console.log(`🃏 ${label}: ${cardData.name} (ID: ${cardData.id})`);
     }
 
