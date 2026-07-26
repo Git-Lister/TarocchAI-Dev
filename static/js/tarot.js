@@ -424,6 +424,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 overflow: hidden;
                 background: #1a1410;
                 border: 1px solid rgba(184, 155, 75, 0.1);
+                display: flex;
+                justify-content: center;
+                align-items: center;
             `;
 
             // Load the card image
@@ -435,10 +438,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 height: 100%;
                 object-fit: cover;
                 border-radius: 8px;
+                display: block;
             `;
+            
             // Handle image loading errors
             img.onerror = function() {
-                // Fallback: show card name
+                console.warn('⚠️ Image not found:', imagePath);
                 this.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.textContent = card.name;
@@ -455,6 +460,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 front.appendChild(fallback);
             };
+            
+            // When image loads successfully, log it
+            img.onload = function() {
+                console.log('✅ Image loaded:', imagePath);
+            };
+            
             front.appendChild(img);
 
             // Assemble card

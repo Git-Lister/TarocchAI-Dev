@@ -1,6 +1,5 @@
 """TarocchAI — Backend API Server (serving static HTML frontend)"""
 
-import os
 import secrets
 
 from nicegui import app, ui
@@ -63,6 +62,7 @@ async def intake_turn(data: dict):
 
 @app.post("/api/reading/generate")
 async def generate_reading(data: dict):
+    """Generate a reading from the sketch."""
     sketch = data.get("sketch", "")
     spread = data.get("spread", [])
     if not spread:
@@ -74,6 +74,7 @@ async def generate_reading(data: dict):
         # Convert "Three of Pentacles" → "three_of_pentacles.png"
         filename = card["name"].lower().replace(" ", "_").replace("-", "_") + ".png"
         entry["image_path"] = f"/static/img/cards/{filename}"
+        print(f"DEBUG: Card: {card['name']} → {entry['image_path']}")  # Debug log
 
     reader = TarotReader()
     full_reading = ""
