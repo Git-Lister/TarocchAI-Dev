@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // Entry — With Candle Ritual (Simplified)
+    // Entry — With Candle Ritual (Clean, no cloning)
     // --------------------------------------------------------------
     function transitionToRoom() {
         if (entryTriggered) return;
@@ -568,35 +568,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         const readyQuestion = READY_QUESTIONS[Math.floor(Math.random() * READY_QUESTIONS.length)];
 
                         speak(readyQuestion, () => {
-                            // DIRECT APPROACH — use onclick attribute
+                            // ENABLE CANDLE CLICK — SIMPLE, NO CLONING
                             const candle = document.getElementById('candle-container');
-                            console.log('🕯️ Candle ready for click!');
-
                             if (candle) {
-                                // Remove all event listeners by replacing the element
-                                // This forces a clean slate
-                                const newCandle = candle.cloneNode(true);
-                                candle.parentNode.replaceChild(newCandle, candle);
-                                
-                                // Get the new reference
-                                const freshCandle = document.getElementById('candle-container');
-                                
-                                // Apply styles directly
-                                freshCandle.style.cursor = 'pointer';
-                                freshCandle.style.pointerEvents = 'auto';
-                                freshCandle.classList.add('waiting');
+                                candle.style.cursor = 'pointer';
+                                candle.style.pointerEvents = 'auto';
+                                candle.classList.add('waiting');
 
-                                // Use onclick property (guaranteed to work)
-                                freshCandle.onclick = function(e) {
-                                    e.stopPropagation();
-                                    console.log('🔥 Candle CLICKED via onclick!');
-                                    handleCandleClickDirect(e);
-                                };
+                                // Remove any old listener to avoid duplicates
+                                candle.removeEventListener('click', handleCandleClick);
+                                candle.addEventListener('click', handleCandleClick);
 
-                                console.log('🕯️ Candle onclick set!');
-                                console.log('🕯️ Candle pointerEvents:', freshCandle.style.pointerEvents);
+                                console.log('🕯️ Candle click enabled (addEventListener)');
                             } else {
-                                console.warn('⚠️ Candle not found!');
+                                console.warn('⚠️ Candle not found');
                             }
                         });
                     }, 600);
@@ -613,66 +598,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // CANDLE CLICK HANDLER (for addEventListener fallback)
+    // CANDLE CLICK HANDLER (Primary)
     // --------------------------------------------------------------
     function handleCandleClick(e) {
         e.stopPropagation();
-        console.log('🕯️ Candle clicked!', { isAwaitingCandleClick, candleClickTriggered });
-
-        if (!isAwaitingCandleClick || candleClickTriggered) {
-            console.log('⚠️ Candle click ignored - not waiting or already triggered');
-            return;
-        }
-
-        candleClickTriggered = true;
-        console.log('🔥 Candle ritual triggered!');
-
-        const colour = CANDLE_COLOURS[Math.floor(Math.random() * CANDLE_COLOURS.length)];
-
-        const flame = document.getElementById('flame');
-        if (flame) {
-            const originalShadow = flame.style.boxShadow;
-            flame.style.boxShadow = `0 0 80px ${colour.shadow}, 0 0 160px ${colour.glow}`;
-            flame.style.filter = `hue-rotate(${Math.random() * 60 - 30}deg)`;
-
-            setTimeout(() => {
-                flame.style.boxShadow = originalShadow || '0 0 80px rgba(255, 180, 50, 0.6), 0 0 160px rgba(255, 120, 20, 0.3)';
-                flame.style.filter = 'none';
-            }, 800);
-        }
-
-        brightenCandle();
-
-        const candle = document.getElementById('candle-container');
-        if (candle) {
-            candle.classList.remove('waiting');
-            candle.style.cursor = 'default';
-            candle.style.pointerEvents = 'none';
-        }
-
-        const acknowledgements = [
-            "I see. Let us begin.",
-            "Good. The cards are waiting.",
-            "Ah. Now we can truly begin.",
-            "Excellent. Let's see what the cards have to say.",
-            "The candle knows. Let's look at the cards.",
-            "I feel it too. Let's begin."
-        ];
-        const ack = acknowledgements[Math.floor(Math.random() * acknowledgements.length)];
-
-        isAwaitingCandleClick = false;
-
-        speak(ack, () => {
-            currentState = 'intake';
-            startIntake();
-        });
-    }
-
-    // --------------------------------------------------------------
-    // CANDLE CLICK DIRECT — Guaranteed to work
-    // --------------------------------------------------------------
-    function handleCandleClickDirect(e) {
-        console.log('🔥 handleCandleClickDirect triggered!', { isAwaitingCandleClick, candleClickTriggered });
+        console.log('🕯️ Candle clicked', { isAwaitingCandleClick, candleClickTriggered });
 
         if (!isAwaitingCandleClick || candleClickTriggered) {
             console.log('⚠️ Click ignored - not waiting or already triggered');
@@ -682,29 +612,31 @@ document.addEventListener('DOMContentLoaded', function() {
         candleClickTriggered = true;
         console.log('🔥 Candle ritual triggered!');
 
+        // Colour change
         const colour = CANDLE_COLOURS[Math.floor(Math.random() * CANDLE_COLOURS.length)];
-
         const flame = document.getElementById('flame');
         if (flame) {
             const originalShadow = flame.style.boxShadow;
             flame.style.boxShadow = `0 0 80px ${colour.shadow}, 0 0 160px ${colour.glow}`;
             flame.style.filter = `hue-rotate(${Math.random() * 60 - 30}deg)`;
-
             setTimeout(() => {
-                flame.style.boxShadow = originalShadow || '0 0 80px rgba(255, 180, 50, 0.6), 0 0 160px rgba(255, 120, 20, 0.3)';
+                flame.style.boxShadow = originalShadow || '0 0 80px rgba(255,180,50,0.6), 0 0 160px rgba(255,120,20,0.3)';
                 flame.style.filter = 'none';
             }, 800);
         }
 
         brightenCandle();
 
+        // Disable candle
         const candle = document.getElementById('candle-container');
         if (candle) {
             candle.classList.remove('waiting');
             candle.style.cursor = 'default';
             candle.style.pointerEvents = 'none';
-            candle.onclick = null; // Remove the onclick to prevent double-firing
+            candle.removeEventListener('click', handleCandleClick); // Clean up
         }
+
+        isAwaitingCandleClick = false;
 
         const acknowledgements = [
             "I see. Let us begin.",
@@ -715,8 +647,6 @@ document.addEventListener('DOMContentLoaded', function() {
             "I feel it too. Let's begin."
         ];
         const ack = acknowledgements[Math.floor(Math.random() * acknowledgements.length)];
-
-        isAwaitingCandleClick = false;
 
         speak(ack, () => {
             currentState = 'intake';
@@ -982,7 +912,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (!entryTriggered) {
             console.warn('⚠️ Auto‑entry fallback triggered');
-            enterRoom();  // Now defined
+            enterRoom();
         }
     }, 4000);
 
