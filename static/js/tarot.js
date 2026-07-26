@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const CARD_COUNT = 78;
 
-
     // ============================================================
     // MADAME TAROCCHAI'S GREETINGS (Randomized)
     // ============================================================
@@ -75,6 +74,39 @@ document.addEventListener('DOMContentLoaded', function() {
         "The cards know your name. I do not need to ask."
     ];
 
+    // ============================================================
+    // CANDLE RITUAL — Colours & Click Handler
+    // ============================================================
+
+    const CANDLE_COLOURS = [
+        { name: 'Copper', shadow: 'rgba(100, 200, 255, 0.6)', glow: 'rgba(100, 200, 255, 0.3)' },
+        { name: 'Strontium', shadow: 'rgba(255, 100, 100, 0.6)', glow: 'rgba(255, 100, 100, 0.3)' },
+        { name: 'Sodium', shadow: 'rgba(255, 220, 100, 0.8)', glow: 'rgba(255, 220, 100, 0.4)' },
+        { name: 'Potassium', shadow: 'rgba(200, 100, 255, 0.6)', glow: 'rgba(200, 100, 255, 0.3)' },
+        { name: 'Boron', shadow: 'rgba(100, 255, 150, 0.6)', glow: 'rgba(100, 255, 150, 0.3)' },
+        { name: 'Lithium', shadow: 'rgba(255, 150, 200, 0.6)', glow: 'rgba(255, 150, 200, 0.3)' }
+    ];
+
+    let isAwaitingCandleClick = false;
+    let candleClickTriggered = false;
+
+    // ============================================================
+    // READY QUESTIONS (Random)
+    // ============================================================
+
+    const READY_QUESTIONS = [
+        "Are you sitting comfortably?",
+        "Are you ready to begin?",
+        "Shall we look at the cards?",
+        "Is there something you wish to ask?",
+        "What brings you here tonight?",
+        "Have you brought a question with you?",
+        "Are you ready to see what the cards hold?",
+        "Shall we begin?",
+        "What would you like to ask the cards?",
+        "I am ready. Are you?"
+    ];
+
     // --------------------------------------------------------------
     // Candle
     // --------------------------------------------------------------
@@ -102,18 +134,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================================
-    // SPEAK — Materializing Text Effect
+    // SPEAK — Slow Materializing Text (Melt Effect)
     // ============================================================
+
     function speak(text, callback) {
         if (isSpeaking) {
             voiceQueue.push({ text, callback });
             return;
         }
         isSpeaking = true;
-        voiceText.classList.add('visible');
 
-        voiceContent.innerHTML = '';
+        // Show the voice area
+        const voiceArea = document.getElementById('voice-text');
+        voiceArea.classList.add('visible');
 
+        // Clear the container
+        const container = document.getElementById('voice-content');
+        container.innerHTML = '';
+
+        // Split text into characters
         const chars = text.split('');
         const schedule = [];
         let time = 0;
@@ -121,19 +160,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         while (i < chars.length) {
             const char = chars[i];
-            let delay = 50 + Math.random() * 60;
 
+            // Base delay — slower overall (80-150ms base)
+            let delay = 80 + Math.random() * 70;
+
+            // Longer pauses at punctuation
             if (char === '.' || char === ',' || char === '!' || char === '?') {
-                delay = 200 + Math.random() * 100;
+                delay = 300 + Math.random() * 150;
             } else if (char === ' ') {
-                delay = 30 + Math.random() * 40;
-            } else if (char === '—') {
-                delay = 250 + Math.random() * 80;
+                delay = 40 + Math.random() * 30;
+            } else if (char === '—' || char === ';' || char === ':') {
+                delay = 250 + Math.random() * 100;
             }
 
+            // Random bursts — small groups appear together (2-5 chars)
             let burstSize = 1;
-            if (Math.random() < 0.08) {
-                burstSize = 2 + Math.floor(Math.random() * 3);
+            if (Math.random() < 0.12) {
+                burstSize = 2 + Math.floor(Math.random() * 4);
             }
 
             const burstChars = [];
@@ -142,16 +185,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 i++;
             }
 
+            // Schedule each character with slight offset within burst
             burstChars.forEach((c, idx) => {
+                const offset = idx * 30 + Math.random() * 25;
                 schedule.push({
                     char: c,
-                    time: time + (idx * 20 + Math.random() * 20),
+                    time: time + offset,
                 });
             });
 
+            // Extra pause after punctuation
             const lastChar = burstChars[burstChars.length - 1];
             if (lastChar === '.' || lastChar === ',' || lastChar === '!' || lastChar === '?') {
-                time += delay + 150 + Math.random() * 100;
+                time += delay + 200 + Math.random() * 150;
             } else {
                 time += delay;
             }
@@ -162,6 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function renderNext() {
             if (scheduledIndex >= schedule.length) {
+                // All characters rendered
                 setTimeout(() => {
                     isSpeaking = false;
                     if (callback) callback();
@@ -169,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const next = voiceQueue.shift();
                         speak(next.text, next.callback);
                     }
-                }, 600);
+                }, 800);
                 return;
             }
 
@@ -184,20 +231,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     span.textContent = next.char;
                 }
-                voiceContent.appendChild(span);
+                container.appendChild(span);
 
-                requestAnimationFrame(() => {
+                // Trigger reveal with slight random delay (adds organic feel)
+                const revealDelay = Math.random() * 80;
+                setTimeout(() => {
                     span.classList.add('revealed');
-                });
+                }, revealDelay);
 
                 scheduledIndex++;
                 renderNext();
             } else {
-                setTimeout(renderNext, 5);
+                setTimeout(renderNext, 10);
             }
         }
 
-        setTimeout(renderNext, 200);
+        // Start the rendering after a short pause (200ms)
+        setTimeout(renderNext, 300);
     }
 
     // --------------------------------------------------------------
@@ -297,79 +347,168 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // Spread and Reveal
+    // Spread and Reveal — With Real Card Images
     // --------------------------------------------------------------
-    function spreadAndReveal(callback) {
-        const topCards = cards.slice(-3);
-        deckArea.innerHTML = '';
-        topCards.forEach(c => deckArea.appendChild(c));
+    function spreadAndReveal(spreadData, callback) {
+        // spreadData is the array from the backend with card info
+        if (!spreadData || spreadData.length === 0) {
+            console.error('No spread data provided');
+            return;
+        }
 
+        // Clear the deck area
+        deckArea.innerHTML = '';
+
+        // Create card elements for each position
         const positions = [
             { label: 'Past', offsetX: -120, offsetY: 0, rot: -3 },
             { label: 'Present', offsetX: 0, offsetY: 0, rot: 0 },
             { label: 'Future', offsetX: 120, offsetY: 0, rot: 3 }
         ];
 
-        topCards.forEach((card, i) => {
-            const pos = positions[i];
-            card.style.transform =
-                `translate(${pos.offsetX}px, ${pos.offsetY}px) rotate(${pos.rot}deg) scale(1)`;
-            card.style.opacity = '1';
-            card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        const cardElements = [];
+
+        spreadData.forEach((entry, index) => {
+            const card = entry.card;
+            const pos = positions[index] || positions[0];
+            const imagePath = entry.image_path || `/static/img/cards/default.png`;
+
+            // Create card element
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.style.cssText = `
+                position: absolute;
+                width: 90px;
+                height: 140px;
+                transform: translate(${pos.offsetX}px, ${pos.offsetY}px) rotate(${pos.rot}deg) scale(0.9);
+                opacity: 0;
+                transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+                perspective: 600px;
+                transform-style: preserve-3d;
+            `;
+
+            // Card back (initially visible)
+            const back = document.createElement('div');
+            back.className = 'card-back';
+            back.style.cssText = `
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: radial-gradient(ellipse at 50% 50%, #1e1a14, #0f0c08);
+                border: 1px solid rgba(184, 155, 75, 0.15);
+                border-radius: 8px;
+                backface-visibility: hidden;
+                background-image: repeating-linear-gradient(45deg, transparent 0px, transparent 6px, rgba(184, 155, 75, 0.02) 6px, rgba(184, 155, 75, 0.02) 7px);
+            `;
+            // Add a subtle emblem
+            const emblem = document.createElement('div');
+            emblem.textContent = '✦';
+            emblem.style.cssText = `
+                position: absolute;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+                color: rgba(184, 155, 75, 0.08);
+                font-size: 2rem;
+                font-family: 'Cinzel', serif;
+            `;
+            back.appendChild(emblem);
+
+            // Card front (image)
+            const front = document.createElement('div');
+            front.className = 'card-front';
+            front.style.cssText = `
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                backface-visibility: hidden;
+                transform: rotateY(180deg);
+                border-radius: 8px;
+                overflow: hidden;
+                background: #1a1410;
+                border: 1px solid rgba(184, 155, 75, 0.1);
+            `;
+
+            // Load the card image
+            const img = document.createElement('img');
+            img.src = imagePath;
+            img.alt = card.name;
+            img.style.cssText = `
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 8px;
+            `;
+            // Handle image loading errors
+            img.onerror = function() {
+                // Fallback: show card name
+                this.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.textContent = card.name;
+                fallback.style.cssText = `
+                    width: 100%; height: 100%;
+                    display: flex; justify-content: center; align-items: center;
+                    font-family: 'Cinzel', serif;
+                    font-size: 0.8rem;
+                    color: #d4af37;
+                    text-align: center;
+                    padding: 0.5rem;
+                    letter-spacing: 0.05em;
+                    line-height: 1.3;
+                `;
+                front.appendChild(fallback);
+            };
+            front.appendChild(img);
+
+            // Assemble card
+            cardEl.appendChild(back);
+            cardEl.appendChild(front);
+            deckArea.appendChild(cardEl);
+            cardElements.push({ el: cardEl, pos: pos, label: positions[index].label, card: card });
         });
 
+        // Reveal the cards with a delay
         setTimeout(() => {
-            flipCard(topCards[0], 'Past', () => {
+            cardElements.forEach((item, idx) => {
+                const el = item.el;
+                // Scale up and fade in
                 setTimeout(() => {
-                    flipCard(topCards[1], 'Present', () => {
-                        setTimeout(() => {
-                            flipCard(topCards[2], 'Future', () => {
-                                if (callback) callback();
-                            });
-                        }, 800);
-                    });
-                }, 800);
+                    el.style.opacity = '1';
+                    el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
+                }, idx * 400);
             });
-        }, 600);
-    }
 
-    function flipCard(card, position, callback) {
-        card.style.transition = 'transform 0.8s ease-in-out';
-        const idx = Array.from(deckArea.children).indexOf(card);
-        const positions = [
-            { offsetX: -120, offsetY: 0, rot: -3 },
-            { offsetX: 0, offsetY: 0, rot: 0 },
-            { offsetX: 120, offsetY: 0, rot: 3 }
-        ];
-        const pos = positions[idx] || { offsetX: 0, offsetY: 0, rot: 0 };
-        card.style.transform =
-            `translate(${pos.offsetX}px, ${pos.offsetY}px) rotate(${pos.rot}deg) rotateY(180deg) scale(1)`;
+            // After all cards are visible, flip them one by one
+            setTimeout(() => {
+                cardElements.forEach((item, idx) => {
+                    setTimeout(() => {
+                        flipCardWithImage(item.el, item.label, item.card);
+                    }, idx * 1200);
+                });
+            }, cardElements.length * 400 + 500);
+        }, 800);
 
-        const back = card.querySelector('.card-back');
-        if (back) {
-            back.style.display = 'none';
-        }
-        const face = document.createElement('div');
-        face.className = 'card-face';
-        face.style.cssText = `
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(ellipse at 50% 40%, #3a2a1a, #1a1410);
-            border-radius: 6px;
-            display: flex; justify-content: center; align-items: center;
-            font-family: 'Cinzel', serif;
-            font-size: 1.2rem;
-            color: #d4af37;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 20px rgba(212,175,55,0.2);
-        `;
-        face.textContent = position;
-        card.appendChild(face);
-
-        brightenCandle();
-
+        // Callback after all cards are flipped
+        const totalFlipTime = cardElements.length * 1200 + 800;
         setTimeout(() => {
             if (callback) callback();
-        }, 800);
+        }, totalFlipTime + 1500);
+    }
+
+    // --------------------------------------------------------------
+    // Flip Card — With Real Card Image
+    // --------------------------------------------------------------
+    function flipCardWithImage(cardEl, label, cardData) {
+        // Apply 3D flip
+        cardEl.style.transition = 'transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        // Get the current position
+        const currentTransform = cardEl.style.transform;
+        // Flip: add rotateY(180deg)
+        cardEl.style.transform = currentTransform + ' rotateY(180deg)';
+        cardEl.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
+
+        // Brighten candle
+        brightenCandle();
+
+        // Log the card
+        console.log(`🃏 ${label}: ${cardData.name} (ID: ${cardData.id})`);
     }
 
     // --------------------------------------------------------------
@@ -398,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --------------------------------------------------------------
-    // Entry
+    // Entry — With Candle Ritual (Simplified)
     // --------------------------------------------------------------
     function transitionToRoom() {
         if (entryTriggered) return;
@@ -413,9 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         createCards();
 
-        // Random greeting from Madame Tarocchai's voice
         const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
-        
 
         setTimeout(() => {
             speak(greeting, () => {
@@ -423,24 +560,199 @@ document.addEventListener('DOMContentLoaded', function() {
                     fanCards();
                     brightenCandle();
                     setTimeout(() => {
-                        interactionHint.classList.add('visible');
-                        interactionHint.textContent = '— speak when you are ready —';
-                        isReadyForInteraction = true;
-                        interactionHint.classList.add('clickable');
+                        interactionHint.classList.remove('visible');
+
+                        isAwaitingCandleClick = true;
+                        candleClickTriggered = false;
+
+                        const readyQuestion = READY_QUESTIONS[Math.floor(Math.random() * READY_QUESTIONS.length)];
+
+                        speak(readyQuestion, () => {
+                            // DIRECT APPROACH — use onclick attribute
+                            const candle = document.getElementById('candle-container');
+                            console.log('🕯️ Candle ready for click!');
+
+                            if (candle) {
+                                // Remove all event listeners by replacing the element
+                                // This forces a clean slate
+                                const newCandle = candle.cloneNode(true);
+                                candle.parentNode.replaceChild(newCandle, candle);
+                                
+                                // Get the new reference
+                                const freshCandle = document.getElementById('candle-container');
+                                
+                                // Apply styles directly
+                                freshCandle.style.cursor = 'pointer';
+                                freshCandle.style.pointerEvents = 'auto';
+                                freshCandle.classList.add('waiting');
+
+                                // Use onclick property (guaranteed to work)
+                                freshCandle.onclick = function(e) {
+                                    e.stopPropagation();
+                                    console.log('🔥 Candle CLICKED via onclick!');
+                                    handleCandleClickDirect(e);
+                                };
+
+                                console.log('🕯️ Candle onclick set!');
+                                console.log('🕯️ Candle pointerEvents:', freshCandle.style.pointerEvents);
+                            } else {
+                                console.warn('⚠️ Candle not found!');
+                            }
+                        });
                     }, 600);
                 }, 600);
             });
         }, 1200);
     }
 
+    // --------------------------------------------------------------
+    // ENTER ROOM — Defined HERE, BEFORE init() and BEFORE fallback
+    // --------------------------------------------------------------
     function enterRoom() {
         transitionToRoom();
+    }
+
+    // --------------------------------------------------------------
+    // CANDLE CLICK HANDLER (for addEventListener fallback)
+    // --------------------------------------------------------------
+    function handleCandleClick(e) {
+        e.stopPropagation();
+        console.log('🕯️ Candle clicked!', { isAwaitingCandleClick, candleClickTriggered });
+
+        if (!isAwaitingCandleClick || candleClickTriggered) {
+            console.log('⚠️ Candle click ignored - not waiting or already triggered');
+            return;
+        }
+
+        candleClickTriggered = true;
+        console.log('🔥 Candle ritual triggered!');
+
+        const colour = CANDLE_COLOURS[Math.floor(Math.random() * CANDLE_COLOURS.length)];
+
+        const flame = document.getElementById('flame');
+        if (flame) {
+            const originalShadow = flame.style.boxShadow;
+            flame.style.boxShadow = `0 0 80px ${colour.shadow}, 0 0 160px ${colour.glow}`;
+            flame.style.filter = `hue-rotate(${Math.random() * 60 - 30}deg)`;
+
+            setTimeout(() => {
+                flame.style.boxShadow = originalShadow || '0 0 80px rgba(255, 180, 50, 0.6), 0 0 160px rgba(255, 120, 20, 0.3)';
+                flame.style.filter = 'none';
+            }, 800);
+        }
+
+        brightenCandle();
+
+        const candle = document.getElementById('candle-container');
+        if (candle) {
+            candle.classList.remove('waiting');
+            candle.style.cursor = 'default';
+            candle.style.pointerEvents = 'none';
+        }
+
+        const acknowledgements = [
+            "I see. Let us begin.",
+            "Good. The cards are waiting.",
+            "Ah. Now we can truly begin.",
+            "Excellent. Let's see what the cards have to say.",
+            "The candle knows. Let's look at the cards.",
+            "I feel it too. Let's begin."
+        ];
+        const ack = acknowledgements[Math.floor(Math.random() * acknowledgements.length)];
+
+        isAwaitingCandleClick = false;
+
+        speak(ack, () => {
+            currentState = 'intake';
+            startIntake();
+        });
+    }
+
+    // --------------------------------------------------------------
+    // CANDLE CLICK DIRECT — Guaranteed to work
+    // --------------------------------------------------------------
+    function handleCandleClickDirect(e) {
+        console.log('🔥 handleCandleClickDirect triggered!', { isAwaitingCandleClick, candleClickTriggered });
+
+        if (!isAwaitingCandleClick || candleClickTriggered) {
+            console.log('⚠️ Click ignored - not waiting or already triggered');
+            return;
+        }
+
+        candleClickTriggered = true;
+        console.log('🔥 Candle ritual triggered!');
+
+        const colour = CANDLE_COLOURS[Math.floor(Math.random() * CANDLE_COLOURS.length)];
+
+        const flame = document.getElementById('flame');
+        if (flame) {
+            const originalShadow = flame.style.boxShadow;
+            flame.style.boxShadow = `0 0 80px ${colour.shadow}, 0 0 160px ${colour.glow}`;
+            flame.style.filter = `hue-rotate(${Math.random() * 60 - 30}deg)`;
+
+            setTimeout(() => {
+                flame.style.boxShadow = originalShadow || '0 0 80px rgba(255, 180, 50, 0.6), 0 0 160px rgba(255, 120, 20, 0.3)';
+                flame.style.filter = 'none';
+            }, 800);
+        }
+
+        brightenCandle();
+
+        const candle = document.getElementById('candle-container');
+        if (candle) {
+            candle.classList.remove('waiting');
+            candle.style.cursor = 'default';
+            candle.style.pointerEvents = 'none';
+            candle.onclick = null; // Remove the onclick to prevent double-firing
+        }
+
+        const acknowledgements = [
+            "I see. Let us begin.",
+            "Good. The cards are waiting.",
+            "Ah. Now we can truly begin.",
+            "Excellent. Let's see what the cards have to say.",
+            "The candle knows. Let's look at the cards.",
+            "I feel it too. Let's begin."
+        ];
+        const ack = acknowledgements[Math.floor(Math.random() * acknowledgements.length)];
+
+        isAwaitingCandleClick = false;
+
+        speak(ack, () => {
+            currentState = 'intake';
+            startIntake();
+        });
+    }
+
+    // --------------------------------------------------------------
+    // CANDLE SETUP — Only sets up the listener
+    // --------------------------------------------------------------
+    function setupCandleClick() {
+        const candle = document.getElementById('candle-container');
+        if (!candle) {
+            console.warn('⚠️ Candle not found for setup');
+            return;
+        }
+
+        // Remove any old listeners to avoid duplicates
+        candle.removeEventListener('click', handleCandleClick);
+        // Add the listener
+        candle.addEventListener('click', handleCandleClick);
+
+        // DO NOT reset pointerEvents or cursor here
+        // Let transitionToRoom control these
+
+        console.log('🕯️ Candle click setup complete');
     }
 
     // --------------------------------------------------------------
     // Init
     // --------------------------------------------------------------
     function init() {
+        // --- REMOVE OR COMMENT THIS OUT ---
+        // setupCandleClick();
+        // console.log('🕯️ Candle setup called from init');
+
         // Show candle early
         setTimeout(() => {
             candleContainer.classList.add('visible');
@@ -448,16 +760,19 @@ document.addEventListener('DOMContentLoaded', function() {
             candleLight.style.opacity = '0.3';
         }, 1000);
 
-        // Threshold text evolves
+        // Threshold text evolves to riddle
         setTimeout(() => {
             const waitText = document.querySelector('.wait-text');
             if (waitText) {
-                waitText.textContent = 'A room is waiting...';
-                waitText.style.opacity = '0.5';
+                waitText.textContent = 'Embrace Asha\'s flickering light to enter...';
+                waitText.style.opacity = '0.7';
+                waitText.style.letterSpacing = '0.3em';
+                waitText.style.fontSize = 'clamp(0.8rem, 1.2vw, 1rem)';
+                waitText.style.color = 'rgba(212, 175, 55, 0.6)';
             }
         }, 4000);
 
-        // Auto-enter after 7s
+        // Auto-enter after 7s — now calls defined enterRoom
         setTimeout(() => {
             if (!entryTriggered) enterRoom();
         }, 7000);
@@ -578,17 +893,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
 
-            if (data.reading) {
+            if (data.reading && data.spread) {
                 currentState = 'complete';
+
+                // Dim candle for the ritual
                 dimCandle();
+
+                // Perform shuffle visual (using the existing animation)
                 shuffleCards(() => {
                     brightenCandle();
+
+                    // Now reveal the actual cards from the backend
                     speak('Three cards. Past, Present, Future.', () => {
-                        spreadAndReveal(() => {
-                            speak(data.reading, () => {
-                                interactionHint.textContent = '— the reading is complete —';
-                                interactionHint.classList.add('visible');
-                            });
+                        // Pass the real spread data to the reveal function
+                        spreadAndReveal(data.spread, () => {
+                            // After cards are revealed, show the reading
+                            setTimeout(() => {
+                                speak(data.reading, () => {
+                                    interactionHint.textContent = '— the reading is complete —';
+                                    interactionHint.classList.add('visible');
+                                });
+                            }, 600);
                         });
                     });
                 });
@@ -602,13 +927,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showUserInput() {
-        userInputArea.style.display = 'block';
+        userInputArea.classList.add('active');
         userInput.focus();
         interactionHint.classList.remove('visible');
     }
 
     function hideUserInput() {
-        userInputArea.style.display = 'none';
+        userInputArea.classList.remove('active');
     }
 
     userInput.addEventListener('keydown', (e) => {
@@ -632,6 +957,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userInput.focus();
     });
 
+    // Override the interaction flow
     function startInteraction() {
         if (!isReadyForInteraction) return;
         isReadyForInteraction = false;
@@ -656,7 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (!entryTriggered) {
             console.warn('⚠️ Auto‑entry fallback triggered');
-            enterRoom();
+            enterRoom();  // Now defined
         }
     }, 4000);
 

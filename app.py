@@ -1,5 +1,6 @@
-"""TarocchAI — Backend API Server (serving embedded HTML)"""
+"""TarocchAI — Backend API Server (serving static HTML frontend)"""
 
+import os
 import secrets
 
 from nicegui import app, ui
@@ -11,32 +12,25 @@ from engine.ollama_queue import ollama_queue
 from engine.reading.drawer import draw_cards
 from engine.reading.interpreter import TarotReader
 
+# ------------------------------------------------------------
+# Serve static files
+# ------------------------------------------------------------
+app.add_static_files("/static", "static")
+
 
 # ------------------------------------------------------------
-# Serve the HTML with embedded CSS and JS
+# Serve the static HTML at the root
 # ------------------------------------------------------------
 @ui.page("/")
 def main():
-    # Load the HTML structure (no script tags, no style tags)
+    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
+    ui.add_body_html('<script src="/static/js/tarot.js"></script>')
     with open("static/index.html", "r", encoding="utf-8") as f:
-        html_content = f.read()
-
-    # Add CSS directly via head
-    with open("static/css/tarot.css", "r", encoding="utf-8") as f:
-        css_content = f.read()
-    ui.add_head_html(f"<style>{css_content}</style>")
-
-    # Add JavaScript directly via body
-    with open("static/js/tarot.js", "r", encoding="utf-8") as f:
-        js_content = f.read()
-    ui.add_body_html(f"<script>{js_content}</script>")
-
-    # Serve the HTML (which now has CSS and JS injected separately)
-    ui.html(html_content)
+        ui.html(f.read())
 
 
 # ------------------------------------------------------------
-# API Endpoints (for the frontend to call)
+# API Endpoints
 # ------------------------------------------------------------
 
 # Storage for interviewers per session
@@ -75,12 +69,22 @@ async def generate_reading(data: dict):
     if not spread:
         spread = draw_cards(3, ["Past", "Present", "Future"])
 
+    # Add image paths with proper mapping
+    for entry in spread:
+        card = entry["card"]
+        # Use the card ID to generate filename, or fallback to name
+        # The images use lowercase with underscores
+        name = card["name"].lower().replace(" ", "_").replace("-", "_")
+        # Handle special cases
+        if name == "the_hanged_man":
+            name = "the_hanged_man"
+        entry["image_path"] = f"/static/img/cards/{name}.png"
+
     reader = TarotReader()
     full_reading = ""
     async for chunk in reader.stream_reading(sketch, spread):
         full_reading += chunk
 
-    # Save to history
     save_session(sketch, spread, full_reading, data.get("mirror_response", ""))
 
     return {"reading": full_reading, "spread": spread}

@@ -8,10 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 
     <style>
-        /* ============================================================
-           TAROCCHAI — Liminal Room (v3)
-           ============================================================ */
-
+        /* --- Base --- */
         * {
             margin: 0;
             padding: 0;
@@ -53,12 +50,7 @@
             height: 100%;
             pointer-events: none;
             z-index: 0;
-            background: radial-gradient(
-                ellipse at 50% 100%,
-                rgba(255, 180, 50, 0.08) 0%,
-                rgba(255, 120, 20, 0.02) 40%,
-                transparent 70%
-            );
+            background: radial-gradient(ellipse at 50% 100%, rgba(255, 180, 50, 0.08) 0%, rgba(255, 120, 20, 0.02) 40%, transparent 70%);
             opacity: 0;
             transition: opacity 2.5s ease;
         }
@@ -231,6 +223,7 @@
             z-index: 0;
         }
 
+        /* --- TEACUP --- */
         .teacup {
             position: absolute;
             bottom: 2.5rem;
@@ -266,6 +259,7 @@
             opacity: 0.25;
         }
 
+        /* --- PHOTOGRAPH --- */
         .photograph {
             position: absolute;
             bottom: 2rem;
@@ -303,91 +297,13 @@
             pointer-events: none;
         }
 
-        .card {
-            position: absolute;
-            width: 70px;
-            height: 110px;
-            background: radial-gradient(ellipse at 50% 50%, #1e1a14, #0f0c08);
-            border: 1px solid rgba(184, 155, 75, 0.12);
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.02);
-            transform-origin: center center;
-            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: none;
-            background-image:
-                repeating-linear-gradient(45deg, transparent 0px, transparent 6px, rgba(184, 155, 75, 0.015) 6px, rgba(184, 155, 75, 0.015) 7px);
-            will-change: transform, opacity;
-        }
-        .card-back {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 80%;
-            border: 1px solid rgba(184, 155, 75, 0.06);
-            border-radius: 3px;
-            background:
-                radial-gradient(circle at 30% 30%, rgba(184, 155, 75, 0.04), transparent 60%),
-                radial-gradient(circle at 70% 70%, rgba(184, 155, 75, 0.02), transparent 50%);
-        }
-        .card-back::after {
-            content: "✦";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(184, 155, 75, 0.10);
-            font-size: 1.2rem;
-        }
-
-        /* --- SPREAD POSITIONS --- */
-        .spread-left { left: 10%; }
-        .spread-center { left: 50%; transform: translateX(-50%); }
-        .spread-right { right: 10%; }
-
-        /* --- VOICE TEXT --- */
-        .voice-text {
-            position: absolute;
-            bottom: 1.2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(85%, 500px);
-            text-align: center;
-            font-family: 'Crimson Text', serif;
-            font-size: clamp(1rem, 1.6vw, 1.3rem);
-            font-style: italic;
-            color: #d9d0c1;
-            opacity: 0;
-            transition: opacity 1.5s ease;
-            z-index: 20;
-            text-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 60px rgba(0, 0, 0, 0.5);
-            line-height: 1.6;
-            padding: 0.5rem;
-            pointer-events: none;
-        }
-        .voice-text.visible { opacity: 0.9; }
-        .voice-text .cursor {
-            display: inline-block;
-            width: 2px;
-            height: 1.1em;
-            background: #d4af37;
-            animation: blink 1s step-end infinite;
-            vertical-align: text-bottom;
-            margin-left: 2px;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
         /* --- INTERACTION HINT --- */
         .interaction-hint {
             position: absolute;
-            bottom: 5rem;
+            bottom: 5.5rem;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             letter-spacing: 0.15em;
             color: rgba(184, 155, 75, 0.2);
             font-family: 'Cinzel', serif;
@@ -396,38 +312,50 @@
             transition: opacity 1.5s ease;
             pointer-events: none;
             cursor: pointer;
+            text-align: center;
         }
         .interaction-hint.visible { opacity: 1; }
         .interaction-hint.clickable {
             pointer-events: auto;
-            color: rgba(184, 155, 75, 0.5);
+            color: rgba(184, 155, 75, 0.4);
             cursor: pointer;
         }
         .interaction-hint.clickable:hover {
-            color: rgba(184, 155, 75, 0.8);
+            color: rgba(184, 155, 75, 0.7);
         }
 
         /* --- RESPONSIVE --- */
         @media (max-width: 600px) {
-            .table { width: 92vw; height: 60vh; padding: 1rem; }
-            .card { width: 50px; height: 78px; }
-            .voice-text { font-size: 1rem; width: 92%; bottom: 0.5rem; }
-            .candle-container { transform: translateX(-50%) scale(0.6); bottom: 2vh; }
-            .teacup, .photograph { display: none; }
-            .interaction-hint { bottom: 4rem; }
+            .table {
+                width: 92vw;
+                height: 60vh;
+                padding: 1rem;
+            }
+            .card {
+                width: 00px;
+                height: 100px;
+            }
+            .teacup,
+            .photograph {
+                display: none;
+            }
+            .interaction-hint {
+                bottom: 4.5rem;
+                font-size: 0.55rem;
+            }
             #candle-light {
-                background: radial-gradient(
-                    ellipse at 50% 100%,
-                    rgba(255, 180, 50, 0.12) 0%,
-                    rgba(255, 120, 20, 0.03) 50%,
-                    transparent 80%
-                );
+                background: radial-gradient(ellipse at 50% 100%, rgba(255, 180, 50, 0.12) 0%, rgba(255, 120, 20, 0.03) 50%, transparent 80%);
             }
         }
         @media (max-width: 400px) {
-            .card { width: 38px; height: 58px; }
-            .voice-text { font-size: 0.85rem; }
-            .interaction-hint { font-size: 0.6rem; bottom: 3.5rem; }
+            .card {
+                width: 65px;
+                height: 100px;
+            }
+            .interaction-hint {
+                bottom: 4rem;
+                font-size: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -456,42 +384,23 @@
                     <!-- Cards injected by JS -->
                 </div>
 
-                <!-- BOTTOM CONTAINER — Voice Text + User Input -->
-                <div class="bottom-container">
-                    <!-- Voice Text (LLM Response) -->
-                    <div class="voice-text" id="voice-text">
+                <!-- BOTTOM BAR -->
+                <div class="bottom-bar">
+                    <!-- Voice Area -->
+                    <div class="voice-area" id="voice-text">
                         <span id="voice-content"></span><span class="cursor"></span>
                     </div>
 
-                    <!-- User Input Area -->
-                    <div class="user-input-area" id="user-input-area">
+                    <!-- Input Bar -->
+                    <div class="input-bar" id="user-input-area">
                         <input type="text" id="user-input" placeholder="..." />
-                        <div class="input-hint">↵</div>
+                        <span class="input-arrow">↵</span>
                     </div>
                 </div>
 
+                <!-- Interaction Hint -->
                 <div class="interaction-hint" id="interaction-hint">
                     — speak when you are ready —
-                </div>
-
-            </div>
-                <!-- USER INPUT AREA -->
-                <div class="user-input-area" id="user-input-area" style="display:none; position: absolute; bottom: 4.5rem; left: 50%; transform: translateX(-50%); z-index: 25; width: 80%; max-width: 400px;">
-                    <input type="text" id="user-input" placeholder="..." style="
-                        width: 100%;
-                        background: rgba(30,27,20,0.85);
-                        border: none;
-                        border-bottom: 1px solid rgba(184,155,75,0.25);
-                        color: #d9d0c1;
-                        padding: 0.8rem 1rem;
-                        font-family: 'Crimson Text', serif;
-                        font-size: clamp(0.95rem, 1.4vw, 1.2rem);
-                        backdrop-filter: blur(4px);
-                        outline: none;
-                        border-radius: 0;
-                        transition: border-color 0.3s ease;
-                    ">
-                    <div style="position: absolute; right: 0.5rem; bottom: 0.8rem; color: rgba(184,155,75,0.2); font-size: 0.7rem; font-family: 'Cinzel', serif; letter-spacing: 0.1em; pointer-events: none;">↵</div>
                 </div>
 
             </div>
@@ -502,8 +411,6 @@
             <div class="candle-flame" id="flame"></div>
             <div class="candle-wick"></div>
             <div class="candle-body"></div>
-        </div>
-
         </div>
 
     </div>
