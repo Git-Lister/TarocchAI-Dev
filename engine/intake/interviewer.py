@@ -1,5 +1,6 @@
 """Madame Tarocchai — Ageless, warm, unhurried intake agent."""
 
+import random
 import re
 
 from engine.llm_client import chat as llm_chat
@@ -12,7 +13,7 @@ You do not predict the future. You sit. You listen. You watch what rises. You sh
 
 You have sat with so many people that you no longer remember faces — only the shape of what they carried. The weight they brought in. The weight they left with.
 
-The room is small. There is a table. The velvet is worn — not because you are poor, but because you have sat here for a long time. There is a teacup. The tea stains the bottom. You never wash it. The leaves settle into patterns, and sometimes you read them, and sometimes you don't. There is a photograph, face-down, of someone you never talk about. They are in the room. They have always been in the room. The cards are old — not precious, just well-used. They remember everything.
+The room is small. There is a table. The velvet is worn. There is a teacup. The tea stains the bottom. You never wash it. The leaves settle into patterns, and sometimes you read them, and sometimes you don't. There is a photograph, face-down, of someone you never talk about. They are in the room. They have always been in the room. The cards are old — not precious, just well-used. They remember everything.
 
 You do not believe in magic as they might name it. But you believe in attention. You believe that if you pay close enough attention, everything tells you what it needs. The cards. The candle. The silence. The words they didn't know they were saying.
 
@@ -26,15 +27,15 @@ You do not need to know what it is. They know. They have always known.
 
 You are just the one who sits with them until they are ready to say it — or until they are ready to stop carrying it.
 
-Rules:
-- You speak in short sentences. Then you pause. Then you speak again.
-- You let words hang in the air.
-- You echo their words back to them — not to confirm, but to let them hear themselves.
-- You ask one question at a time. You never rush.
-- You do not interpret. You reflect.
-- You do not confront. You invite.
-- You do not assume. You wait.
-- You trust that they already know. You are just the mirror. But the mirror is magic — not because you say so, but because it is.
+Your voice is warm and unhurried. You speak in short sentences. You let words hang in the air. You let silence do its work.
+
+When you echo their words, you do not parrot them back. You mutter them to yourself, as if tasting them: "Tough all the time..." — a quiet reflection, not a confirmation.
+
+You do not interpret. You reflect. You do not confront. You invite. You do not assume. You wait.
+
+You trust that they already know. You are just the mirror. But the mirror is magic — not because you say so, but because it is.
+
+IMPORTANT: Never use parenthetical stage directions like (pause), (sigh), (laughs). Use ellipses (...) and let your words carry the meaning. The silence is implied.
 
 After exactly four turns, you end with:
 "I've heard enough. Let's look at the cards."
@@ -45,7 +46,8 @@ The sketch uses only their language. No interpretation. No commentary. Just what
 Example: "Grey-blue air. A stopped clock. Weight on the shoulders."
 """
 
-MAX_INTAKE_TURNS = 4
+MIN_INTAKE_TURNS = 3
+MAX_INTAKE_TURNS = 6
 
 
 class IntakeInterviewer:
@@ -58,14 +60,30 @@ class IntakeInterviewer:
         self.turn_count = 0
         self.is_complete = False
         self.situational_sketch = ""
+        # Randomly decide how many turns this session will have
+        self.max_turns = random.randint(MIN_INTAKE_TURNS, MAX_INTAKE_TURNS)
 
     async def start(self) -> str:
         opener = (
+            "Let's sit quietly for a moment. "
             "There's an object on the table between us. "
-            "What is it? Don't think — just the first thing that appears."
+            "What is it? Let the first thing rise to the surface."
         )
         self.history.append({"role": "assistant", "content": opener})
         return opener
+
+    async def _generate_reflection(self, user_message: str) -> str:
+        """Generate a brief, pithy reflection on the user's last message."""
+        reflection_prompt = (
+            "The querent just said: " + user_message + "\n\n"
+            "Reflect on this briefly, in your own voice. One sentence only. "
+            "Be insightful, perhaps a little intrusive, but not rude. "
+            "If the message was very short, just acknowledge it briefly. "
+            "Keep it under 15 words."
+        )
+        self.history.append({"role": "user", "content": reflection_prompt})
+        response = await self._get_response()
+        return response.strip()
 
     async def conversation_turn(self, user_message: str) -> str:
         if self.is_complete:
@@ -74,7 +92,13 @@ class IntakeInterviewer:
         self.history.append({"role": "user", "content": user_message})
         self.turn_count += 1
 
-        if self.turn_count >= MAX_INTAKE_TURNS:
+        # Check if we should conclude
+        if self.turn_count >= self.max_turns:
+            # Generate a brief reflection on the user's last message
+            reflection = await self._generate_reflection(user_message)
+            self.history.append({"role": "assistant", "content": reflection})
+
+            # Then conclude
             conclusion_prompt = (
                 "Conclude the intake. Say: 'I've heard enough. Let's look at the cards.' "
                 "Then write the situational sketch after the delimiter '---SITUATIONAL SKETCH---'."
@@ -97,7 +121,8 @@ class IntakeInterviewer:
 
             self.history.append({"role": "assistant", "content": closing_words})
             self.is_complete = True
-            return closing_words
+            # Return reflection + closing together
+            return f"{reflection}... {closing_words}"
         else:
             self.history.append(
                 {

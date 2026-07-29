@@ -22,8 +22,11 @@ app.add_static_files("/static", "static")
 # ------------------------------------------------------------
 @ui.page("/")
 def main():
+    # Load CSS and JS via NiceGUI's methods (not inside index.html)
     ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
     ui.add_body_html('<script src="/static/js/tarot.js"></script>')
+
+    # Load the HTML structure (no script/style tags inside)
     with open("static/index.html", "r", encoding="utf-8") as f:
         ui.html(f.read())
 
@@ -71,10 +74,9 @@ async def generate_reading(data: dict):
     # Generate image path from card name
     for entry in spread:
         card = entry["card"]
-        # Convert "Three of Pentacles" → "three_of_pentacles.png"
         filename = card["name"].lower().replace(" ", "_").replace("-", "_") + ".png"
         entry["image_path"] = f"/static/img/cards/{filename}"
-        print(f"DEBUG: Card: {card['name']} → {entry['image_path']}")  # Debug log
+        print(f"🔍 Card: {card['name']} → {entry['image_path']}")
 
     reader = TarotReader()
     full_reading = ""
