@@ -38,6 +38,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const CARD_COUNT = 78;
     const SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
 
+
+
+        // ============================================================
+    // BREATHING PRESENCE — Tied to Speech
+    // ============================================================
+
+    const breathingPresence = document.getElementById('breathing-presence');
+
+    function startBreathing() {
+        if (breathingPresence) {
+            breathingPresence.classList.add('speaking');
+        }
+    }
+
+    function stopBreathing() {
+        if (breathingPresence) {
+            breathingPresence.classList.remove('speaking');
+        }
+    }
+
+    // ============================================================
+    // DYNAMIC TEXT BOX — Expansion & Contraction
+    // ============================================================
+
+    function expandTextBox() {
+        const madameArea = document.getElementById('madame-area');
+        const voiceArea = document.getElementById('voice-text');
+        if (madameArea) {
+            madameArea.style.transition = 'all 0.8s ease';
+            madameArea.style.maxHeight = '55vh';
+            madameArea.style.padding = '0.5rem 1rem';
+        }
+        if (voiceArea) {
+            voiceArea.style.transition = 'all 0.8s ease';
+            voiceArea.style.padding = '0.5rem 1rem';
+            voiceArea.style.border = '2px solid rgba(212, 175, 55, 0.15)';
+            voiceArea.style.boxShadow = '0 0 60px rgba(212, 175, 55, 0.08)';
+            voiceArea.style.borderRadius = '8px';
+        }
+        startBreathing();
+    }
+
+    function contractTextBox() {
+        const madameArea = document.getElementById('madame-area');
+        const voiceArea = document.getElementById('voice-text');
+        if (madameArea) {
+            madameArea.style.maxHeight = '';
+            madameArea.style.padding = '';
+        }
+        if (voiceArea) {
+            voiceArea.style.transition = 'all 1s ease';
+            voiceArea.style.padding = '';
+            voiceArea.style.border = '';
+            voiceArea.style.boxShadow = '';
+            voiceArea.style.borderRadius = '';
+        }
+        stopBreathing();
+    }
+
     // ============================================================
     // MADAME TAROCCHAI'S GREETINGS (Randomized)
     // ============================================================
@@ -151,6 +210,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         isSpeaking = true;
+        expandTextBox();
+        startBreathing();
 
         // Create a sentence element
         const sentence = document.createElement('div');
@@ -221,6 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Manage visible sentences (keep max 3 visible)
                 manageVisibleSentences();
+                stopBreathing();
 
                 setTimeout(() => {
                     isSpeaking = false;

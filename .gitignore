@@ -85,3 +85,7 @@ htmlcov/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
+
+#
+Readings/
+data/readings/sessions.jsonl

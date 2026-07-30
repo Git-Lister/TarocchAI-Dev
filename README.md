@@ -217,4 +217,3 @@ TarocchAI was conceived and built as a personal project, drawing on:
 
 ```
 
-Update the GitHub link `https://github.com/your-username/TarocchAI.git` to match your actual repository. Once pasted, the README will guide anyone from a fresh clone to a full, working TarocchAI session.

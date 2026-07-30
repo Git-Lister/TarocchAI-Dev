@@ -24,7 +24,7 @@
             <div class="table" id="table">
 
                 <!-- Name Gate -->
-                <div class="name-gate" id="name-gate" style="display:none;">
+                <div class="name-gate" id="name-gate">
                     <div class="name-gate-text">"By what name shall I know you?"</div>
                     <div class="name-gate-input-area">
                         <input type="text" id="name-input" placeholder="..." />
@@ -32,38 +32,53 @@
                     </div>
                 </div>
 
-                <!-- DECK AREA -->
-                <div class="deck-area" id="deck-area">
-                    <!-- Cards injected by JS -->
-                </div>
-
-                <!-- BOTTOM BAR -->
-                <div class="bottom-bar">
-                    <!-- Voice Area -->
+                <!-- ========================================== -->
+                <!-- TOP: Madame Tarocchai's Dynamic Text Box   -->
+                <!-- ========================================== -->
+                <div class="madame-area" id="madame-area">
                     <div class="voice-area" id="voice-text">
                         <!-- Sentences injected by JS -->
                     </div>
+                </div>
 
-                    <!-- Input Bar -->
+                <!-- ========================================== -->
+                <!-- MIDDLE: Cards + Breathing Presence        -->
+                <!-- ========================================== -->
+                <div class="cards-section">
+                    <!-- Breathing Presence (behind cards) -->
+                    <div class="breathing-presence" id="breathing-presence"></div>
+
+                    <!-- Cards -->
+                    <div class="deck-area" id="deck-area">
+                        <!-- Cards injected by JS -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- CANDLE (between cards and user input)     -->
+                <!-- ========================================== -->
+                <div class="candle-section">
+                    <div class="candle-container" id="candle-container">
+                        <div class="candle-flame" id="flame"></div>
+                        <div class="candle-wick"></div>
+                        <div class="candle-body"></div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- BOTTOM: User Input                        -->
+                <!-- ========================================== -->
+                <div class="user-section">
                     <div class="input-bar" id="user-input-area">
                         <input type="text" id="user-input" placeholder="..." />
                         <span class="input-arrow">↵</span>
                     </div>
-                </div>
-
-                <!-- Interaction Hint -->
-                <div class="interaction-hint" id="interaction-hint">
-                    — speak when you are ready —
+                    <div class="interaction-hint" id="interaction-hint">
+                        — speak when you are ready —
+                    </div>
                 </div>
 
             </div>
-        </div>
-
-        <!-- Candle -->
-        <div class="candle-container" id="candle-container">
-            <div class="candle-flame" id="flame"></div>
-            <div class="candle-wick"></div>
-            <div class="candle-body"></div>
         </div>
 
     </div>
