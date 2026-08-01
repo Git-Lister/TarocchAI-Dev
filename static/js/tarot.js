@@ -67,8 +67,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const voiceArea = document.getElementById('voice-text');
         if (madameArea) {
             madameArea.style.transition = 'all 0.8s ease';
-            madameArea.style.maxHeight = '55vh';
-            madameArea.style.padding = '0.5rem 1rem';
+            madameArea.style.maxHeight = '30vh'; /* Hard cap */
+            madameArea.style.overflow = 'hidden';
         }
         if (voiceArea) {
             voiceArea.style.transition = 'all 0.8s ease';
@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
             voiceArea.style.border = '2px solid rgba(212, 175, 55, 0.15)';
             voiceArea.style.boxShadow = '0 0 60px rgba(212, 175, 55, 0.08)';
             voiceArea.style.borderRadius = '8px';
+            voiceArea.style.overflowY = 'auto';
         }
         startBreathing();
     }
@@ -610,14 +611,10 @@ document.addEventListener('DOMContentLoaded', function() {
         cardEl.style.transform = currentTransform + ' rotateY(180deg)';
         cardEl.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.15)';
 
-        const front = cardEl.querySelector('.card-front');
-        if (front) {
-            front.style.transform = 'rotateY(0deg)';
-            front.style.backfaceVisibility = 'visible';
-        }
+        // DO NOT modify the front's transform — the parent flip will cancel its 180deg
+        // No front.style.transform changes
 
         brightenCandle();
-
         console.log(`🃏 ${label}: ${cardData.name} (ID: ${cardData.id})`);
     }
 
@@ -847,6 +844,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // --------------------------------------------------------------
     // BACKEND INTEGRATION
     // --------------------------------------------------------------
+
+    function showThinkingState() {
+    const voiceArea = document.getElementById('voice-text');
+    if (voiceArea) {
+        const thinking = document.createElement('div');
+        thinking.className = 'voice-sentence thinking-dots';
+        thinking.id = 'thinking-indicator';
+        thinking.textContent = '...';
+        voiceArea.appendChild(thinking);
+        // Remove after reading starts
+    }
+}
+
+function hideThinkingState() {
+    const thinking = document.getElementById('thinking-indicator');
+    if (thinking) thinking.remove();
+}
+
+
     async function startIntake() {
         try {
             const response = await fetch('/api/intake/start', {
@@ -905,11 +921,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-async function startReading() {
-    try {
-        console.log('📖 startReading called');
-        console.log('📖 sketchData:', sketchData);
+    async function startReading() {
+        try {
+            console.log('📖 startReading called');
+            console.log('📖 sketchData:', sketchData);
 
+            // Show thinking state
+            showThinkingState();
+            interactionHint.textContent = '— Madame Tarocchai is reading the cards... —';
+            interactionHint.classList.add('visible');
+
+        // 2. Generate the reading
         const response = await fetch('/api/reading/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -924,29 +946,46 @@ async function startReading() {
         if (!data || !data.reading) {
             console.error('📖 No reading in response:', data);
             speak('The cards are silent tonight. Perhaps another time.');
+            interactionHint.textContent = '— the reading is complete —';
             return;
         }
 
         console.log('📖 Reading found, length:', data.reading.length);
         currentState = 'complete';
         spreadData = data.spread;
+        hideThinkingState();
+        interactionHint.classList.remove('visible');
 
+        // 3. Dim candle for shuffle
         dimCandle();
+
+        // 4. Shuffle and reveal
         shuffleCards(() => {
             brightenCandle();
             speak('Three cards. Past, Present, Future.', () => {
                 spreadAndReveal(data.spread, () => {
                     console.log('📖 Cards revealed, showing reading');
                     setTimeout(() => {
+                        // 5. Remove "thinking" hint
+                        interactionHint.classList.remove('visible');
+
+                        // 6. Speak the full reading (cohesive)
                         const readingText = data.reading;
                         const cleanReading = readingText.replace(/\([^)]*\)/g, '').trim();
 
-                        // Split into sections by card mentions
-                        const sections = splitReadingIntoSections(cleanReading);
-                        console.log('📖 Sections:', sections.length);
+                        // 7. Schedule highlights before speaking
+                        scheduleHighlights(cleanReading);
 
-                        // Show sections one by one with candle clicks
-                        showReadingSections(sections);
+                        // 8. Speak the full reading
+                        expandTextBox();
+                        startBreathing();
+                        speak(cleanReading, () => {
+                            console.log('📖 Reading spoken');
+                            // 9. Done
+                            interactionHint.textContent = '— the reading is complete —';
+                            interactionHint.classList.add('visible');
+                            setTimeout(contractTextBox, 3000);
+                        });
                     }, 600);
                 });
             });
@@ -954,6 +993,8 @@ async function startReading() {
     } catch (e) {
         console.error('📖 Failed to generate reading:', e);
         speak('The cards are not speaking clearly. Let us sit with the silence.');
+        interactionHint.textContent = '— the reading is complete —';
+        interactionHint.classList.add('visible');
     }
 }
 
