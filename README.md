@@ -1,6 +1,4 @@
-Here is the complete, updated `README.md` — ready to paste into your project. It includes the full setup guide for a fresh clone, the “How It Works” explanation, and a clear map of everything the project contains.
 
-```markdown
 # TarocchAI
 
 **A local, offline Tarot reader that sees spirit in the material.**
