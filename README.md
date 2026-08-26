@@ -73,7 +73,7 @@ reader’s candlelit room, once, long ago.
 - [x] Retrieval‑Augmented Generation (RAG) for deep card interpretation
 - [x] NiceGUI frontend with dark tarot‑inspired styling
 - [x] Fully local (no cloud, no API keys)
-- [ ] Card artwork generation (grindhouse‑medieval house style)
+- [x] Card artwork generation (grindhouse‑medieval house style)
 - [ ] Text‑to‑speech (XTTS) for spoken readings
 - [ ] Additional spreads and reading modes
 
