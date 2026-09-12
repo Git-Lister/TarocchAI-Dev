@@ -1143,34 +1143,6 @@ function showReadingSections(sections) {
     }
 
     // --------------------------------------------------------------
-    // DYNAMIC TEXT BOX — Top-level functions
-    // --------------------------------------------------------------
-
-    function expandTextBox() {
-        const voiceArea = document.getElementById('voice-text');
-        if (voiceArea) {
-            voiceArea.style.transition = 'max-height 0.8s ease, padding 0.8s ease, border 0.8s ease, box-shadow 0.8s ease';
-            voiceArea.style.maxHeight = '60vh';
-            voiceArea.style.padding = '1rem 1.5rem';
-            voiceArea.style.border = '2px solid rgba(212, 175, 55, 0.3)';
-            voiceArea.style.boxShadow = '0 0 60px rgba(212, 175, 55, 0.15)';
-            voiceArea.style.borderRadius = '8px';
-        }
-    }
-
-    function contractTextBox() {
-        const voiceArea = document.getElementById('voice-text');
-        if (voiceArea) {
-            voiceArea.style.transition = 'max-height 1s ease, padding 1s ease, border 1s ease, box-shadow 1s ease';
-            voiceArea.style.maxHeight = '';
-            voiceArea.style.padding = '';
-            voiceArea.style.border = '';
-            voiceArea.style.boxShadow = '';
-            voiceArea.style.borderRadius = '';
-        }
-    }
-
-    // --------------------------------------------------------------
     // User Input
     // --------------------------------------------------------------
     function showUserInput() {
