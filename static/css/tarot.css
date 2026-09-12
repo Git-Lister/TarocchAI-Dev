@@ -329,7 +329,7 @@ body::before {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 20vh;
+    min-height: 25vh;
 }
 
 .deck-area {
@@ -489,6 +489,7 @@ body::before {
     justify-content: center;
     align-items: center;
     min-height: 10vh;
+    margin-top: 1rem;
     position: relative;
 }
 
