@@ -3,8 +3,10 @@ Card drawing logic using secrets module for hardware entropy.
 """
 
 import json
+import logging
 import os
 import secrets
+from typing import Optional
 
 CARDS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "knowledge_base", "cards.json")
 
@@ -23,12 +25,12 @@ def load_cards():
                 cards = json.load(f)
                 if isinstance(cards, list) and len(cards) == 78:
                     return cards
-        except Exception:
-            pass
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+            logging.warning(f"Failed to load cards from {CARDS_PATH}: {e}")
     return FALLBACK_CARDS
 
 
-def draw_cards(num_cards: int = 3, positions: list = None, with_replacement: bool = False) -> list:
+def draw_cards(num_cards: int = 3, positions: Optional[list] = None, with_replacement: bool = False) -> list:
     cards = load_cards()
     if positions is None:
         positions = [f"Position {i+1}" for i in range(num_cards)]
