@@ -403,204 +403,159 @@ function fanCards() {
     });
 }
 
-    // --------------------------------------------------------------
-    // Shuffle Animation
-    // --------------------------------------------------------------
-    function shuffleCards(callback) {
-        const total = cards.length;
-        const steps = 40;
-        const duration = 3000;
+// --------------------------------------------------------------
+// Shuffle Animation — Converge to Single Stack
+// --------------------------------------------------------------
+function shuffleCards(callback) {
+    const total = cards.length;
+    const steps = 30;
+    const duration = 2500;
+    const centerX = 0;
+    const centerY = 0;
 
-        for (let step = 0; step < steps; step++) {
-            setTimeout(() => {
-                cards.forEach((card, i) => {
-                    if (Math.random() > 0.75) {
-                        const x = (Math.random() - 0.5) * 400;
-                        const y = (Math.random() - 0.5) * 250;
-                        const rot = (Math.random() - 0.5) * 80;
-                        card.style.transform =
-                            `translate(${x}px, ${y}px) rotate(${rot}deg) scale(0.4)`;
-                        card.style.opacity = '0.3';
-                    }
-                });
-            }, step * 40);
-        }
-
+    // Phase 1: Scatter shuffle
+    for (let step = 0; step < steps; step++) {
         setTimeout(() => {
             cards.forEach((card, i) => {
-                const offsetX = (Math.random() - 0.5) * 6;
-                const offsetY = (Math.random() - 0.5) * 6;
-                const rot = (Math.random() - 0.5) * 2;
-                const delay = i * 3;
-                setTimeout(() => {
+                if (Math.random() > 0.6) {
+                    const x = (Math.random() - 0.5) * 300;
+                    const y = (Math.random() - 0.5) * 200;
+                    const rot = (Math.random() - 0.5) * 60;
                     card.style.transform =
-                        `translate(${offsetX}px, ${offsetY}px) rotate(${rot}deg) scale(0.6)`;
+                        `translate(${x}px, ${y}px) rotate(${rot}deg) scale(0.5)`;
                     card.style.opacity = '0.4';
-                }, delay);
+                }
             });
-
-            setTimeout(() => {
-                for (let i = 0; i < cards.length - 3; i++) {
-                    cards[i].style.opacity = '0';
-                }
-                for (let i = 0; i < 3; i++) {
-                    const idx = cards.length - 1 - i;
-                    const card = cards[idx];
-                    card.style.opacity = '0.7';
-                    card.style.transform =
-                        `translate(${(i - 1) * 2}px, ${(i - 1) * 1}px) rotate(${i * 0.5}deg) scale(0.6)`;
-                }
-                if (callback) callback();
-            }, 300);
-        }, duration + 500);
+        }, step * 35);
     }
 
-    // --------------------------------------------------------------
-    // Spread and Reveal — With Real Card Images
-    // --------------------------------------------------------------
-    function spreadAndReveal(spreadData, callback) {
-        if (!spreadData || spreadData.length === 0) {
-            console.error('No spread data provided');
-            return;
-        }
-
-        deckArea.innerHTML = '';
-
-        const positions = [
-            { label: 'Past', offsetX: -160, offsetY: 0, rot: -3 },
-            { label: 'Present', offsetX: 0, offsetY: 0, rot: 0 },
-            { label: 'Future', offsetX: 160, offsetY: 0, rot: 3 }
-        ];
-
-        const cardRefs = [];
-
-        spreadData.forEach((entry, index) => {
-            const card = entry.card;
-            const pos = positions[index] || positions[0];
-            const imagePath = entry.image_path || `/static/img/cards/default.png`;
-
-            console.log(`🃏 Creating card ${index}: ${card.name} → ${imagePath}`);
-
-            const cardEl = document.createElement('div');
-            cardEl.className = 'card reveal-card';
-            cardEl.dataset.cardName = card.name;
-            cardEl.style.cssText = `
-                position: absolute;
-                width: var(--reveal-card-width);
-                height: var(--reveal-card-height);
-                transform: translate(${pos.offsetX}px, ${pos.offsetY}px) rotate(${pos.rot}deg) scale(0.5);
-                opacity: 0;
-                transition: all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-                perspective: 600px;
-                transform-style: preserve-3d;
-                cursor: default;
-            `;
-
-            // Card Back
-            const back = document.createElement('div');
-            back.className = 'card-back';
-            back.style.cssText = `
-                position: absolute;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                backface-visibility: hidden;
-                border-radius: 8px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                background-image: var(--card-back-image), repeating-linear-gradient(45deg, transparent 0px, transparent 6px, rgba(184, 155, 75, 0.02) 6px, rgba(184, 155, 75, 0.02) 7px);
-                background-size: cover, auto;
-                background-blend-mode: overlay;
-                background-position: center, auto;
-                border: 1px solid rgba(184, 155, 75, 0.15);
-            `;
-
-            // Card Front
-            const front = document.createElement('div');
-            front.className = 'card-front';
-            front.style.cssText = `
-                position: absolute;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                backface-visibility: hidden;
-                transform: rotateY(180deg);
-                border-radius: 8px;
-                overflow: hidden;
-                background: #1a1410;
-                border: 1px solid rgba(184, 155, 75, 0.1);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            `;
-
-            const img = document.createElement('img');
-            img.src = imagePath;
-            img.alt = card.name;
-            img.style.cssText = `
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                border-radius: 8px;
-                display: block;
-            `;
-            img.onload = function() {
-                console.log('✅ Image loaded:', imagePath);
-            };
-            img.onerror = function() {
-                console.warn('⚠️ Image failed to load:', imagePath);
-                this.style.display = 'none';
-                const fallback = document.createElement('div');
-                fallback.textContent = card.name;
-                fallback.style.cssText = `
-                    width: 100%; height: 100%;
-                    display: flex; justify-content: center; align-items: center;
-                    font-family: 'Cinzel', serif;
-                    font-size: 0.8rem;
-                    color: #d4af37;
-                    text-align: center;
-                    padding: 0.5rem;
-                `;
-                front.appendChild(fallback);
-            };
-            front.appendChild(img);
-
-            cardEl.appendChild(back);
-            cardEl.appendChild(front);
-            deckArea.appendChild(cardEl);
-
-            cardRefs.push({
-                el: cardEl,
-                pos: pos,
-                label: positions[index].label,
-                card: card
-            });
+    // Phase 2: Converge to single stack at center
+    setTimeout(() => {
+        cards.forEach((card, i) => {
+            const delay = i * 2;
+            setTimeout(() => {
+                card.style.transform =
+                    `translate(${centerX}px, ${centerY}px) rotate(${Math.random() * 2 - 1}deg) scale(0.7)`;
+                card.style.opacity = '0.8';
+                card.style.zIndex = i;
+            }, delay);
         });
 
-        // Reveal all 3 cards together with scale bounce
+        // Phase 3: Callback when stack formed
+        setTimeout(() => {
+            if (callback) callback();
+        }, total * 2 + 500);
+    }, duration + 300);
+}
+
+// --------------------------------------------------------------
+// Deal From Deck — Replaces spreadAndReveal
+// --------------------------------------------------------------
+function dealFromDeck(spreadData, callback) {
+    if (!spreadData || spreadData.length === 0) {
+        console.error('No spread data provided');
+        return;
+    }
+
+    const positions = [
+        { label: 'Past', offsetX: -180, offsetY: 0, rot: -4 },
+        { label: 'Present', offsetX: 0, offsetY: 0, rot: 0 },
+        { label: 'Future', offsetX: 180, offsetY: 0, rot: 4 }
+    ];
+
+    const cardRefs = [];
+    const dealtCards = cards.slice(-3);
+    const remainingCards = cards.slice(0, -3);
+
+    // Fade out remaining 75 cards
+    remainingCards.forEach((card, i) => {
+        setTimeout(() => {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.3)';
+        }, i * 5);
+    });
+
+    // Update the 3 dealt cards in place — NO innerHTML rebuild
+    dealtCards.forEach((cardEl, index) => {
+        const card = spreadData[index].card;
+        const pos = positions[index];
+        const imagePath = spreadData[index].image_path || `/static/img/cards/default.png`;
+
+        // Convert existing .card to .reveal-card
+        cardEl.className = 'card reveal-card';
+        cardEl.dataset.cardName = card.name;
+        cardEl.style.cssText = `
+            position: absolute;
+            width: var(--reveal-card-width);
+            height: var(--reveal-card-height);
+            transform: translate(0, 0) rotate(0deg) scale(0.7);
+            opacity: 0.8;
+            transition: all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            perspective: 600px;
+            transform-style: preserve-3d;
+            cursor: default;
+            z-index: ${100 + index};
+        `;
+
+        // UPDATE front image only — keep .card-back (CSS var handles it)
+        const front = cardEl.querySelector('.card-front');
+        const img = front ? front.querySelector('img') : null;
+        if (img) {
+            img.src = imagePath;
+            img.alt = card.name;
+            img.style.display = 'block';
+            // Remove any fallback text
+            const fallback = front.querySelector('div');
+            if (fallback) fallback.remove();
+        } else if (front) {
+            // Create img if missing (shouldn't happen but safe)
+            const newImg = document.createElement('img');
+            newImg.src = imagePath;
+            newImg.alt = card.name;
+            newImg.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block;';
+            newImg.onerror = function() {
+                this.style.display = 'none';
+                const fb = document.createElement('div');
+                fb.textContent = card.name;
+                fb.style.cssText = 'width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-family: Cinzel, serif; font-size: 0.8rem; color: #d4af37; text-align: center; padding: 0.5rem;';
+                front.appendChild(fb);
+            };
+            front.appendChild(newImg);
+        }
+
+        cardRefs.push({
+            el: cardEl,
+            pos: pos,
+            label: pos.label,
+            card: card
+        });
+    });
+
+    // Animate deal: move 3 cards to positions
+    setTimeout(() => {
+        cardRefs.forEach((item, idx) => {
+            setTimeout(() => {
+                item.el.style.opacity = '1';
+                item.el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
+                item.el.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
+            }, idx * 250);
+        });
+
+        // Flip cards one by one
         setTimeout(() => {
             cardRefs.forEach((item, idx) => {
                 setTimeout(() => {
-                    item.el.style.opacity = '1';
-                    item.el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
-                    item.el.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
-                }, idx * 200);
+                    flipCard(item.el, item.label, item.card);
+                }, idx * 800);
             });
-
-            // After reveal, flip them one by one
-            setTimeout(() => {
-                cardRefs.forEach((item, idx) => {
-                    setTimeout(() => {
-                        flipCard(item.el, item.label, item.card);
-                    }, idx * 800);
-                });
-            }, cardRefs.length * 200 + 600);
-        }, 600);
+        }, cardRefs.length * 250 + 600);
 
         const totalTime = cardRefs.length * 800 + 2000;
         setTimeout(() => {
             if (callback) callback();
         }, totalTime);
-    }
+    }, 300);
+}
 
     // --------------------------------------------------------------
     // Flip Card
@@ -961,12 +916,12 @@ function hideThinkingState() {
         // 3. Dim candle for shuffle
         dimCandle();
 
-        // 4. Shuffle and reveal
+        // 4. Shuffle and deal
         shuffleCards(() => {
             brightenCandle();
             speak('Three cards. Past, Present, Future.', () => {
-                spreadAndReveal(data.spread, () => {
-                    console.log('📖 Cards revealed, showing reading');
+                dealFromDeck(data.spread, () => {
+                    console.log('📖 Cards dealt and flipped, showing reading');
                     setTimeout(() => {
                         // 5. Remove "thinking" hint
                         interactionHint.classList.remove('visible');
