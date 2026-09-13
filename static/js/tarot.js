@@ -885,6 +885,7 @@ function hideThinkingState() {
     }
 
     async function sendUserMessage(message) {
+        console.log('📨 Sending user message:', message);
         try {
             const response = await fetch('/api/intake/turn', {
                 method: 'POST',
@@ -895,6 +896,7 @@ function hideThinkingState() {
                 })
             });
             const data = await response.json();
+            console.log('📨 Raw reply from backend:', data);
 
             if (data.error) {
                 console.error('Intake error:', data.error);
