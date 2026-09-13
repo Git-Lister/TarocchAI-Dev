@@ -12,7 +12,7 @@
     --text-heading: #e8ddc4;
     --font-display: 'Cinzel', 'Georgia', serif;
     --font-body: 'Crimson Text', 'Times New Roman', serif;
-    --card-width: clamp(80px, 12vw, 150px);
+    --card-width: clamp(60px, 8vw, 100px);
     --card-height: calc(var(--card-width) * 1.55);
     --reveal-card-width: clamp(120px, 18vw, 220px);
     --reveal-card-height: calc(var(--reveal-card-width) * 1.55);
@@ -241,7 +241,7 @@ body::before {
     flex-direction: column;
     justify-content: flex-end;
     padding: 0.2rem 0.5rem;
-    z-index: 5;
+    z-index: 10;
     transition: all 0.8s ease;
     overflow: hidden;       /* Prevent expansion */
 }
@@ -341,6 +341,7 @@ body::before {
     align-items: center;
     z-index: 3;
     pointer-events: none;
+    overflow: hidden;
 }
 
 /* ---------- Breathing Presence ---------- */
@@ -481,16 +482,18 @@ body::before {
     100% { transform: scale(1); }
 }
 
-/* ---------- Candle Section (Below Cards) ---------- */
+/* ---------- Candle Section (Below Cards, On the Table) ---------- */
 .candle-section {
-    flex: 0.5;
+    flex: 0 0 auto;                 /* fixed height, does not grow */
     width: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 10vh;
-    margin-top: 1rem;
+    align-items: flex-end;
+    min-height: 12vh;
+    margin-top: 0.5rem;
     position: relative;
+    z-index: 10;
+    padding-bottom: 0.5rem;
 }
 
 .candle-container {
@@ -498,9 +501,10 @@ body::before {
     flex-direction: column;
     align-items: center;
     pointer-events: none;
-    opacity: 0.7;
-    transition: opacity 1.5s ease;
-    transform: scale(0.8);
+    opacity: 0.85;
+    transition: opacity 1.5s ease, transform 1.5s ease;
+    transform: scale(1);            /* was 0.8 — larger */
+    filter: drop-shadow(0 -20px 60px rgba(255, 180, 50, 0.15));
 }
 .candle-container.visible { display: flex; }
 .candle-container.bright { opacity: 1; }
@@ -517,10 +521,29 @@ body::before {
     background: radial-gradient(ellipse at 50% 30%, #f4d03f, #e67e22 60%, transparent 80%);
     border-radius: 50% 50% 40% 40%;
     position: relative;
-    box-shadow: 0 0 60px rgba(255, 180, 50, 0.6), 0 0 120px rgba(255, 120, 20, 0.3);
+    box-shadow: 0 0 80px rgba(255, 180, 50, 0.7),
+                0 0 160px rgba(255, 120, 20, 0.4),
+                0 -40px 120px rgba(255, 160, 50, 0.25);  /* upward glow */
     transform-origin: bottom center;
     animation: flicker 0.15s infinite alternate, float 3s ease-in-out infinite;
     transition: box-shadow 0.5s ease, filter 0.5s ease;
+}
+
+/* Candle shadow on the table surface */
+.candle-section::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 12px;
+    background: radial-gradient(ellipse at center,
+                rgba(0, 0, 0, 0.6) 0%,
+                rgba(0, 0, 0, 0.2) 50%,
+                transparent 80%);
+    pointer-events: none;
+    z-index: -1;
 }
 .candle-wick {
     width: 4px;
@@ -636,7 +659,7 @@ body::before {
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
     :root {
-        --card-width: clamp(50px, 18vw, 100px);
+        --card-width: clamp(45px, 15vw, 80px);
         --reveal-card-width: clamp(80px, 20vw, 150px);
     }
     .table { padding: 0.5rem; }
@@ -649,12 +672,12 @@ body::before {
 }
 @media (max-width: 480px) {
     :root {
-        --card-width: clamp(40px, 22vw, 70px);
+        --card-width: clamp(35px, 18vw, 60px);
         --reveal-card-width: clamp(60px, 25vw, 120px);
     }
     .madame-area { max-height: 25vh; }
     .voice-sentence { font-size: clamp(0.7rem, 2.5vw, 1rem); }
     .user-sentence { font-size: clamp(0.7rem, 2.5vw, 1rem); }
     .input-bar #user-input { font-size: clamp(0.8rem, 2vw, 1rem); }
-    .candle-container { transform: scale(0.6); }
+    .candle-container { transform: scale(0.7); }
 }
