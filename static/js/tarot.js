@@ -372,6 +372,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const back = document.createElement('div');
             back.className = 'card-back';
             card.appendChild(back);
+            const front = document.createElement('div');
+            front.className = 'card-front';
+            front.style.transform = 'rotateY(180deg)';
+            card.appendChild(front);
             card.style.opacity = '0';
             card.style.transform = 'scale(0.5)';
             deckArea.appendChild(card);
