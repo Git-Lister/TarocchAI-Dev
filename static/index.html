@@ -55,7 +55,7 @@
                 </div>
 
                 <!-- ========================================== -->
-                <!-- CANDLE (between cards and user input)     -->
+                <!-- CANDLE (below cards)     -->
                 <!-- ========================================== -->
                 <div class="candle-section">
                     <div class="candle-container" id="candle-container">
@@ -66,15 +66,20 @@
                 </div>
 
                 <!-- ========================================== -->
-                <!-- BOTTOM: User Input                        -->
+                <!-- BOTTOM: User messages + Input -->
                 <!-- ========================================== -->
-                <div class="user-section">
-                    <div class="input-bar" id="user-input-area">
-                        <input type="text" id="user-input" placeholder="..." />
-                        <span class="input-arrow">↵</span>
+                <div class="user-area">
+                    <div class="user-messages" id="user-messages">
+                        <!-- User sentences injected by JS -->
                     </div>
-                    <div class="interaction-hint" id="interaction-hint">
-                        — speak when you are ready —
+                    <div class="user-input-wrapper">
+                        <div class="input-bar" id="user-input-area">
+                            <input type="text" id="user-input" placeholder="..." />
+                            <span class="input-arrow">↵</span>
+                        </div>
+                        <div class="interaction-hint" id="interaction-hint">
+                            — speak when you are ready —
+                        </div>
                     </div>
                 </div>
 
