@@ -509,10 +509,18 @@ function shuffleCards(callback) {
             }, delay);
         });
 
-        // Phase 3: Callback when stack formed
+        // Phase 3: Hold the stack visibly for 800ms with CSS pulse animation
+        const stackFormedTime = duration + 300 + total * 2;
         setTimeout(() => {
-            if (callback) callback();
-        }, total * 2 + 500);
+            cards.forEach((card) => {
+                card.style.setProperty('--stack-rot', `${Math.random() * 2 - 1}deg`);
+                card.classList.add('stack-pulse');
+            });
+            setTimeout(() => {
+                cards.forEach(card => card.classList.remove('stack-pulse'));
+                if (callback) callback();
+            }, 800);
+        }, stackFormedTime);
     }, duration + 300);
 }
 
