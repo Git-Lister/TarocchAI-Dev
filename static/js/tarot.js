@@ -339,25 +339,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --------------------------------------------------------------
-    // User Sentences
-    // --------------------------------------------------------------
-    function addUserSentence(text) {
-        const sentence = document.createElement('div');
-        sentence.className = 'user-sentence';
-        sentence.textContent = text;
-        voiceArea.appendChild(sentence);
+// --------------------------------------------------------------
+// User Sentences
+// --------------------------------------------------------------
+function addUserSentence(text) {
+    const sentence = document.createElement('div');
+    sentence.className = 'user-sentence';
+    sentence.textContent = text;
 
-        // Trigger visibility
-        requestAnimationFrame(() => {
-            sentence.classList.add('visible');
-        });
+    const userMessages = document.getElementById('user-messages');
+    const target = userMessages || voiceArea;
+    target.appendChild(sentence);
 
-        // Manage visible sentences (keep max 3)
-        setTimeout(() => {
-            manageVisibleSentences();
-        }, 100);
+    requestAnimationFrame(() => {
+        sentence.classList.add('visible');
+    });
+
+    // Manage max-3 visible within the target container
+    const siblings = target.querySelectorAll('.user-sentence');
+    if (siblings.length > 3) {
+        const toRemove = siblings.length - 3;
+        for (let i = 0; i < toRemove; i++) {
+            const s = siblings[i];
+            s.classList.add('fading');
+            setTimeout(() => {
+                if (s.parentNode) s.parentNode.removeChild(s);
+            }, 800);
+        }
     }
+}
 
     // --------------------------------------------------------------
     // Cards — Create and manage
