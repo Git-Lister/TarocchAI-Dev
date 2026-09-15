@@ -418,6 +418,60 @@ function fanCards() {
 }
 
 // --------------------------------------------------------------
+// LAYOUT ENGINE — Reusable fan/grid layout
+// --------------------------------------------------------------
+function layOutFan(cardElements, options = {}) {
+    const {
+        columns = 20,
+        spacingX = 18,
+        spacingY = 4,
+        scale = 0.85,
+        arc = true,
+        arcAmount = 2.5,
+        rotationX = 0.6,
+        rotationY = 0.2,
+        delayMultiplier = 6,
+        opacity = 0.6
+    } = options;
+
+    const total = cardElements.length;
+    const rows = Math.ceil(total / columns);
+    const startX = -(columns - 1) * spacingX / 2;
+    const startY = -(rows - 1) * spacingY / 2;
+    const centerCol = (columns - 1) / 2;
+
+    cardElements.forEach((card, i) => {
+        const col = i % columns;
+        const row = Math.floor(i / columns);
+        const x = startX + col * spacingX;
+        const y = startY + row * spacingY;
+        const arcRot = arc
+            ? ((col - centerCol) / centerCol) * arcAmount
+            : (col - columns / 2) * rotationX;
+        const rot = arcRot + (row - rows / 2) * rotationY;
+        const delay = i * delayMultiplier;
+        setTimeout(() => {
+            card.style.transform =
+                `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${scale})`;
+            card.style.opacity = opacity.toString();
+        }, delay);
+    });
+}
+
+function fanCards() {
+    layOutFan(cards, {
+        columns: 20,
+        spacingX: 18,
+        spacingY: 4,
+        scale: 0.85,
+        arc: true,
+        arcAmount: 2.5,
+        delayMultiplier: 6,
+        opacity: 0.6
+    });
+}
+
+// --------------------------------------------------------------
 // Shuffle Animation — Converge to Single Stack
 // --------------------------------------------------------------
 function shuffleCards(callback) {
