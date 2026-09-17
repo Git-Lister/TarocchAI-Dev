@@ -12,7 +12,7 @@
     --text-heading: #e8ddc4;
     --font-display: 'Cinzel', 'Georgia', serif;
     --font-body: 'Crimson Text', 'Times New Roman', serif;
-    --card-width: clamp(60px, 8vw, 100px);
+    --card-width: clamp(80px, 12vw, 150px);
     --card-height: calc(var(--card-width) * 1.55);
     --reveal-card-width: clamp(120px, 18vw, 220px);
     --reveal-card-height: calc(var(--reveal-card-width) * 1.55);
@@ -145,21 +145,15 @@ body::before {
     background: radial-gradient(ellipse at 50% 100%, #1e1b14 0%, #14110e 60%, #0b0a07 100%);
     border-radius: 20px 20px 8px 8px;
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    display: grid;
-    grid-template-rows: 
-        minmax(80px, 28vh)    /* Row 1: madame-area (content-sized, capped) */
-        minmax(0, 1fr)        /* Row 2: cards-section (fills remaining) */
-        auto                  /* Row 3: candle-section (content-sized) */
-        auto;                 /* Row 4: user-area (content-sized) */
-    gap: 0;
-    overflow: hidden;         /* Nothing escapes the table */
-    align-items: start;       /* Align items to top of each grid cell */
-    justify-items: center;    /* Center horizontally */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Stack from top */
+    align-items: center;
+    z-index: 1;
     padding: 0.5rem 1rem;
     opacity: 0;
     pointer-events: none;
     transition: opacity 1.5s ease;
-    box-sizing: border-box;
 }
 
 #room.visible .table {
@@ -239,20 +233,22 @@ body::before {
 
 /* ---------- Madame's Area (Top) ---------- */
 .madame-area {
+    flex: 0 0 auto;         /* Do not grow */
     width: 100%;
-    height: 100%;
+    max-height: 30vh;       /* Cap height */
+    min-height: 80px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     padding: 0.2rem 0.5rem;
-    z-index: 10;
+    z-index: 5;
     transition: all 0.8s ease;
-    overflow: hidden;
-    box-sizing: border-box;
+    overflow: hidden;       /* Prevent expansion */
 }
 
 .voice-area {
     width: 100%;
+    height: 100%;           /* Take full parent height */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -261,12 +257,14 @@ body::before {
     pointer-events: none;
     transition: all 0.8s ease;
     border-radius: 8px;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
+    overflow-y: auto;       /* Scroll when needed */
     scrollbar-width: thin;
     scrollbar-color: rgba(184, 155, 75, 0.1) transparent;
-    flex-shrink: 1;
-    box-sizing: border-box;
+    flex-shrink: 1;         /* Allow shrinking if needed */
+    max-width: 1100px;
+    margin: 0 auto;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .voice-area::-webkit-scrollbar {
@@ -329,14 +327,13 @@ body::before {
 
 /* ---------- Cards Section (Middle) ---------- */
 .cards-section {
+    flex: 1.5;
     width: 100%;
-    height: 100%;
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
-    box-sizing: border-box;
+    min-height: 25vh;
 }
 
 .deck-area {
@@ -348,8 +345,6 @@ body::before {
     align-items: center;
     z-index: 3;
     pointer-events: none;
-    overflow: hidden;
-    box-sizing: border-box;
 }
 
 /* ---------- Breathing Presence ---------- */
@@ -492,15 +487,14 @@ body::before {
 
 /* ---------- Candle Section (Below Cards) ---------- */
 .candle-section {
+    flex: 0.5;
     width: 100%;
     display: flex;
     justify-content: center;
-    align-items: flex-end;
-    min-height: 12vh;
+    align-items: center;
+    min-height: 10vh;
+    margin-top: 1rem;
     position: relative;
-    z-index: 10;
-    padding-bottom: 0.5rem;
-    box-sizing: border-box;
 }
 
 .candle-container {
@@ -508,10 +502,9 @@ body::before {
     flex-direction: column;
     align-items: center;
     pointer-events: none;
-    opacity: 0.85;
-    transition: opacity 1.5s ease, transform 1.5s ease;
-    transform: scale(1);            /* was 0.8 — larger */
-    filter: drop-shadow(0 -20px 60px rgba(255, 180, 50, 0.15));
+    opacity: 0.7;
+    transition: opacity 1.5s ease;
+    transform: scale(0.8);
 }
 .candle-container.visible { display: flex; }
 .candle-container.bright { opacity: 1; }
@@ -528,29 +521,10 @@ body::before {
     background: radial-gradient(ellipse at 50% 30%, #f4d03f, #e67e22 60%, transparent 80%);
     border-radius: 50% 50% 40% 40%;
     position: relative;
-    box-shadow: 0 0 80px rgba(255, 180, 50, 0.7),
-                0 0 160px rgba(255, 120, 20, 0.4),
-                0 -40px 120px rgba(255, 160, 50, 0.25);  /* upward glow */
+    box-shadow: 0 0 60px rgba(255, 180, 50, 0.6), 0 0 120px rgba(255, 120, 20, 0.3);
     transform-origin: bottom center;
     animation: flicker 0.15s infinite alternate, float 3s ease-in-out infinite;
     transition: box-shadow 0.5s ease, filter 0.5s ease;
-}
-
-/* Candle shadow on the table surface */
-.candle-section::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120px;
-    height: 12px;
-    background: radial-gradient(ellipse at center,
-                rgba(0, 0, 0, 0.6) 0%,
-                rgba(0, 0, 0, 0.2) 50%,
-                transparent 80%);
-    pointer-events: none;
-    z-index: -1;
 }
 .candle-wick {
     width: 4px;
@@ -584,73 +558,17 @@ body::before {
     50% { opacity: 1; filter: drop-shadow(0 0 30px rgba(255,180,50,0.25)); }
 }
 
-/* ---------- User Area (Bottom) ---------- */
-.user-area {
+/* ---------- User Section (Bottom) ---------- */
+.user-section {
+    flex: 0 0 auto;
     width: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end;
     align-items: center;
+    padding: 0.3rem 1rem;
     gap: 0.3rem;
-    padding: 0.3rem 1rem 0.5rem;
-    box-sizing: border-box;
-}
-
-.user-messages {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.15rem;
-    padding: 0.2rem 0.5rem;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(184, 155, 75, 0.1) transparent;
-    box-sizing: border-box;
-}
-
-.user-messages::-webkit-scrollbar {
-    width: 3px;
-}
-.user-messages::-webkit-scrollbar-track {
-    background: transparent;
-}
-.user-messages::-webkit-scrollbar-thumb {
-    background: rgba(184, 155, 75, 0.2);
-    border-radius: 4px;
-}
-
-/* User sentences in user-messages */
-.user-messages .user-sentence {
-    font-family: var(--font-body);
-    font-size: clamp(0.9rem, 1.4vw, 1.6rem);
-    color: var(--text-heading);
-    opacity: 0;
-    transform: translateY(-8px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
-    line-height: 1.4;
-    padding: 0.1rem 0.5rem;
-    border-right: 3px solid rgba(212, 175, 55, 0.4);
-    text-align: right;
-    width: 100%;
-    max-width: 100%;
-}
-.user-messages .user-sentence.visible {
-    opacity: 0.9;
-    transform: translateY(0);
-}
-.user-messages .user-sentence.fading {
-    opacity: 0.3;
-    transform: translateY(8px);
-}
-
-.user-input-wrapper {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    box-sizing: border-box;
+    min-height: 60px;
 }
 .input-bar {
     width: 80%;
@@ -705,15 +623,6 @@ body::before {
 }
 .interaction-hint.clickable:hover { color: rgba(184, 155, 75, 0.7); }
 
-/* Stack pulse animation for visible shuffle hold */
-.card.stack-pulse {
-    animation: stack-breathe 0.8s ease-in-out infinite alternate;
-}
-@keyframes stack-breathe {
-    0% { transform: translate(0, 0) rotate(var(--stack-rot, 0deg)) scale(0.7); }
-    100% { transform: translate(0, 0) rotate(var(--stack-rot, 0deg)) scale(0.72); }
-}
-
 /* ---------- Materializing Text ---------- */
 .materializing-char {
     display: inline-block;
@@ -731,23 +640,25 @@ body::before {
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
     :root {
-        --card-width: clamp(45px, 15vw, 80px);
+        --card-width: clamp(50px, 18vw, 100px);
         --reveal-card-width: clamp(80px, 20vw, 150px);
     }
     .table { padding: 0.5rem; }
+    .madame-area { max-height: 30vh; }
     .voice-sentence { font-size: clamp(0.8rem, 2vw, 1.2rem); }
-    .user-messages .user-sentence { font-size: clamp(0.8rem, 2vw, 1.2rem); }
+    .user-sentence { font-size: clamp(0.8rem, 2vw, 1.2rem); }
     .input-bar { width: 90%; }
     .name-gate { padding: 1.5rem 2rem; }
     .name-gate-text { font-size: clamp(1rem, 2vw, 1.4rem); }
 }
 @media (max-width: 480px) {
     :root {
-        --card-width: clamp(35px, 18vw, 60px);
+        --card-width: clamp(40px, 22vw, 70px);
         --reveal-card-width: clamp(60px, 25vw, 120px);
     }
+    .madame-area { max-height: 25vh; }
     .voice-sentence { font-size: clamp(0.7rem, 2.5vw, 1rem); }
-    .user-messages .user-sentence { font-size: clamp(0.7rem, 2.5vw, 1rem); }
+    .user-sentence { font-size: clamp(0.7rem, 2.5vw, 1rem); }
     .input-bar #user-input { font-size: clamp(0.8rem, 2vw, 1rem); }
-    .candle-container { transform: scale(0.7); }
+    .candle-container { transform: scale(0.6); }
 }

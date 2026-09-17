@@ -34,6 +34,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentState = 'intake';
     let sketchData = null;
     let spreadData = null;
+    let flippedCount = 0;
+    let cardClickMode = 'flip';
+    let cardMeanings = {};
+    let currentDisplay = 'thread';  // 'thread' | 'past' | 'present' | 'future'
+    let fullReadingText = '';  // Store full reading for toggle
 
     const CARD_COUNT = 78;
     const SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
@@ -67,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const voiceArea = document.getElementById('voice-text');
         if (madameArea) {
             madameArea.style.transition = 'all 0.8s ease';
-            madameArea.style.maxHeight = '30vh'; /* Hard cap */
+            madameArea.style.maxHeight = '45vh'; /* Hard cap - expanded for reading */
             madameArea.style.overflow = 'hidden';
         }
         if (voiceArea) {
@@ -547,7 +552,7 @@ function dealFromDeck(spreadData, callback) {
             transition: all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
             perspective: 600px;
             transform-style: preserve-3d;
-            cursor: default;
+            cursor: pointer;
             z-index: ${100 + index};
         `;
 
@@ -592,22 +597,25 @@ function dealFromDeck(spreadData, callback) {
                 item.el.style.opacity = '1';
                 item.el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
                 item.el.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
+                // Enable click for flip
+                item.el.style.pointerEvents = 'auto';
+                item.el.style.cursor = 'pointer';
+                item.el.addEventListener('click', () => {
+                    if (cardClickMode !== 'flip') return;
+                    if (item.el.dataset.flipped === 'true') return;
+                    item.el.dataset.flipped = 'true';
+                    item.el.style.pointerEvents = 'none';
+                    item.el.style.cursor = 'default';
+                    flipCard(item.el, item.label, item.card);
+                    flippedCount += 1;
+                    if (flippedCount === 3) {
+                        flippedCount = 0;
+                        cardClickMode = 'meaning';
+                        if (callback) callback();
+                    }
+                });
             }, idx * 250);
         });
-
-        // Flip cards one by one
-        setTimeout(() => {
-            cardRefs.forEach((item, idx) => {
-                setTimeout(() => {
-                    flipCard(item.el, item.label, item.card);
-                }, idx * 800);
-            });
-        }, cardRefs.length * 250 + 600);
-
-        const totalTime = cardRefs.length * 800 + 2000;
-        setTimeout(() => {
-            if (callback) callback();
-        }, totalTime);
     }, 300);
 }
 
@@ -862,13 +870,14 @@ function dealFromDeck(spreadData, callback) {
         thinking.id = 'thinking-indicator';
         thinking.textContent = '...';
         voiceArea.appendChild(thinking);
-        // Remove after reading starts
+        startBreathing();
     }
 }
 
 function hideThinkingState() {
     const thinking = document.getElementById('thinking-indicator');
     if (thinking) thinking.remove();
+    stopBreathing();
 }
 
 
@@ -942,72 +951,113 @@ function hideThinkingState() {
             interactionHint.textContent = '— Madame Tarocchai is reading the cards... —';
             interactionHint.classList.add('visible');
 
-        // 2. Generate the reading
-        const response = await fetch('/api/reading/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sketch: sketchData || 'A quiet presence at the table.',
-                spread: []
-            })
-        });
-        const data = await response.json();
-        console.log('📖 API response:', data);
+            // 2. Generate the reading
+            const fetchStart = Date.now();
+            const response = await fetch('/api/reading/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sketch: sketchData || 'A quiet presence at the table.',
+                    spread: []
+                })
+            });
+            const data = await response.json();
+            console.log('📖 API response:', data);
 
-        if (!data || !data.reading) {
-            console.error('📖 No reading in response:', data);
-            speak('The cards are silent tonight. Perhaps another time.');
-            interactionHint.textContent = '— the reading is complete —';
-            return;
-        }
+            if (!data || !data.reading) {
+                console.error('📖 No reading in response:', data);
+                speak('The cards are silent tonight. Perhaps another time.');
+                interactionHint.textContent = '— the reading is complete —';
+                return;
+            }
 
-        console.log('📖 Reading found, length:', data.reading.length);
-        currentState = 'complete';
-        spreadData = data.spread;
-        hideThinkingState();
-        interactionHint.classList.remove('visible');
+            console.log('📖 Reading found, length:', data.reading.length);
+            currentState = 'complete';
+            spreadData = data.spread;
 
-        // 3. Dim candle for shuffle
-        dimCandle();
+            // Store card meanings and full reading for later toggle
+            cardMeanings = data.card_meanings || {};
+            fullReadingText = data.reading;
 
-        // 4. Shuffle and deal
-        shuffleCards(() => {
-            brightenCandle();
-            speak('Three cards. Past, Present, Future.', () => {
-                dealFromDeck(data.spread, () => {
-                    console.log('📖 Cards dealt and flipped, showing reading');
-                    setTimeout(() => {
-                        // 5. Remove "thinking" hint
-                        interactionHint.classList.remove('visible');
+            // Channeling state: minimum 2.5s hold during LLM latency
+            const elapsed = Date.now() - fetchStart;
+            const remaining = Math.max(0, 2500 - elapsed);
+            if (remaining > 0) {
+                await new Promise(resolve => setTimeout(resolve, remaining));
+            }
 
-                        // 6. Speak the full reading (cohesive)
-                        const readingText = data.reading;
-                        const cleanReading = readingText.replace(/\([^)]*\)/g, '').trim();
+            hideThinkingState();
+            interactionHint.classList.remove('visible');
 
-                        // 7. Schedule highlights before speaking
-                        scheduleHighlights(cleanReading);
+            // 3. Dim candle for shuffle
+            dimCandle();
 
-                        // 8. Speak the full reading
-                        expandTextBox();
-                        startBreathing();
-                        speak(cleanReading, () => {
-                            console.log('📖 Reading spoken');
-                            // 9. Done
-                            interactionHint.textContent = '— the reading is complete —';
-                            interactionHint.classList.add('visible');
-                            setTimeout(contractTextBox, 3000);
-                        });
-                    }, 600);
+            // 4. Shuffle and deal
+            shuffleCards(() => {
+                brightenCandle();
+                speak('Three cards. Past, Present, Future.', () => {
+                    dealFromDeck(data.spread, () => {
+                        console.log('📖 Cards dealt and flipped, showing reading');
+                        setTimeout(() => {
+                            // Remove "thinking" hint
+                            interactionHint.classList.remove('visible');
+
+                            // 6. Speak the full reading (cohesive) - use thread from structured response
+                            const threadText = data.card_meanings && data.card_meanings.thread 
+                                ? data.card_meanings.thread 
+                                : data.reading.replace(/\([^)]*\)/g, '').trim();
+                            const cleanReading = threadText.replace(/\([^)]*\)/g, '').trim();
+
+                            // 7. Schedule highlights before speaking
+                            scheduleHighlights(cleanReading);
+
+                            // 8. Speak the full reading
+                            expandTextBox();
+                            startBreathing();
+                            speak(cleanReading, () => {
+                                console.log('📖 Reading spoken');
+                                // 9. Attach meaning-click handlers to reveal cards
+                                const positions = ['Past', 'Present', 'Future'];
+                                document.querySelectorAll('.card.reveal-card').forEach((cardEl, idx) => {
+                                    cardEl.style.pointerEvents = 'auto';
+                                    cardEl.style.cursor = 'pointer';
+                                    cardEl.addEventListener('click', () => {
+                                        const pos = positions[idx];
+                                        if (currentDisplay === pos.toLowerCase()) {
+                                            // Toggle off — restore thread
+                                            currentDisplay = 'thread';
+                                            replaceVoiceContent(threadText);
+                                        } else {
+                                            currentDisplay = pos.toLowerCase();
+                                            const meaning = cardMeanings[pos] || 'The card is silent.';
+                                            replaceVoiceContent(meaning);
+                                        }
+                                    });
+                                });
+                                // 10. Done
+                                interactionHint.textContent = '— the reading is complete —';
+                                interactionHint.classList.add('visible');
+                                setTimeout(contractTextBox, 3000);
+                            });
+                        }, 600);
+                    });
                 });
             });
-        });
-    } catch (e) {
-        console.error('📖 Failed to generate reading:', e);
-        speak('The cards are not speaking clearly. Let us sit with the silence.');
-        interactionHint.textContent = '— the reading is complete —';
-        interactionHint.classList.add('visible');
+        } catch (e) {
+            console.error('📖 Failed to generate reading:', e);
+            speak('The cards are not speaking clearly. Let us sit with the silence.');
+            interactionHint.textContent = '— the reading is complete —';
+            interactionHint.classList.add('visible');
+        }
     }
-}
+
+    function replaceVoiceContent(text) {
+        voiceArea.innerHTML = '';
+        const sentence = document.createElement('div');
+        sentence.className = 'voice-sentence visible';
+        sentence.textContent = text;
+        voiceArea.appendChild(sentence);
+    }
 
     // --------------------------------------------------------------
     // CARD HIGHLIGHTING
