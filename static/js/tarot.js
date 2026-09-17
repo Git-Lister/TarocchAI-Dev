@@ -393,29 +393,7 @@ function addUserSentence(text) {
         }
     }
 
-function fanCards() {
-    const total = cards.length;
-    const columns = 12;
-    const rows = Math.ceil(total / columns);
-    const spacingX = 14;
-    const spacingY = 10;
-    const startX = -(columns - 1) * spacingX / 2;
-    const startY = -(rows - 1) * spacingY / 2;
 
-    cards.forEach((card, i) => {
-        const col = i % columns;
-        const row = Math.floor(i / columns);
-        const x = startX + col * spacingX;
-        const y = startY + row * spacingY;
-        const rot = (col - columns / 2) * 0.6 + (row - rows / 2) * 0.2;
-        const delay = i * 8;
-        setTimeout(() => {
-            card.style.transform =
-                `translate(${x}px, ${y}px) rotate(${rot}deg) scale(0.85)`;
-            card.style.opacity = '0.6';
-        }, delay);
-    });
-}
 
 // --------------------------------------------------------------
 // LAYOUT ENGINE — Reusable fan/grid layout
@@ -1084,13 +1062,7 @@ function hideThinkingState() {
                 hideUserInput();
                 userInput.value = '';
                 addUserSentence(message);
-                speak(message, () => {
-                    if (currentState === 'intake') {
-                        sendUserMessage(message);
-                    } else {
-                        sendUserMessage(message);
-                    }
-                });
+                sendUserMessage(message);
             }
         }
     });
