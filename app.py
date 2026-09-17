@@ -2,6 +2,8 @@
 
 import secrets
 
+from fastapi import Request
+from fastapi.responses import Response
 from nicegui import app, ui
 
 from config import MODEL_NAME
@@ -10,6 +12,19 @@ from engine.intake.interviewer import IntakeInterviewer
 from engine.ollama_queue import ollama_queue
 from engine.reading.drawer import draw_cards
 from engine.reading.interpreter import TarotReader
+
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = (
+            "no-store, no-cache, must-revalidate, max-age=0"
+        )
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 
 # ------------------------------------------------------------
 # Serve static files
@@ -24,7 +39,7 @@ app.add_static_files("/static", "static")
 def main():
     # Load CSS and JS via NiceGUI's methods (not inside index.html)
     ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
-    ui.add_body_html('<script src="/static/js/tarot.js?v=4"></script>')
+    ui.add_body_html('<script src="/static/js/tarot.js?v=6"></script>')
 
     # Load the HTML structure (no script/style tags inside)
     with open("static/index.html", "r", encoding="utf-8") as f:
@@ -63,6 +78,24 @@ async def intake_turn(data: dict):
     return {"reply": reply, "is_complete": is_complete, "sketch": sketch}
 
 
+import re
+
+# ... (keep existing imports)
+
+def parse_structured_reading(text: str) -> dict:
+    """Split LLM output on [THREAD]/[PAST]/[PRESENT]/[FUTURE] markers."""
+    sections = {"thread": "", "past": "", "present": "", "future": ""}
+    current = None
+    for line in text.split("\n"):
+        m = re.match(r"^\[(THREAD|PAST|PRESENT|FUTURE)\]\s*$", line.strip())
+        if m:
+            current = m.group(1).lower()
+            continue
+        if current:
+            sections[current] += line + "\n"
+    return {k: v.strip() for k, v in sections.items()}
+
+
 @app.post("/api/reading/generate")
 async def generate_reading(data: dict):
     """Generate a reading from the sketch."""
@@ -85,7 +118,16 @@ async def generate_reading(data: dict):
 
     save_session(sketch, spread, full_reading, data.get("mirror_response", ""))
 
-    return {"reading": full_reading, "spread": spread}
+    parsed = parse_structured_reading(full_reading)
+    return {
+        "reading": parsed["thread"] or full_reading,
+        "card_meanings": {
+            "Past": parsed["past"],
+            "Present": parsed["present"],
+            "Future": parsed["future"],
+        },
+        "spread": spread,
+    }
 
 
 # ------------------------------------------------------------
