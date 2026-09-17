@@ -1091,7 +1091,6 @@ function hideThinkingState() {
         setTimeout(() => {
             candleContainer.classList.add('visible');
             candleLight.classList.add('visible');
-            candleLight.style.opacity = '0.3';
         }, 1000);
 
         // Threshold text evolves
