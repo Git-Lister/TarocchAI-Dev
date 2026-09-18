@@ -322,6 +322,19 @@ body::before {
     transform: translateY(0);
 }
 
+.base-line {
+    font-family: var(--font-body);
+    font-size: clamp(0.85rem, 1.15vw, 1.25rem);
+    color: rgba(184, 155, 75, 0.7);
+    letter-spacing: 0.06em;
+    padding: 0.25rem 0.5rem 0.35rem 0.5rem;
+    border-bottom: 1px solid rgba(184, 155, 75, 0.15);
+    margin-bottom: 0.5rem;
+    width: 100%;
+    max-width: 100%;
+    font-style: normal;
+}
+
 .user-sentence {
     font-family: var(--font-body);
     font-size: clamp(0.9rem, 1.4vw, 1.6rem);

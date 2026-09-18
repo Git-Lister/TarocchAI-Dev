@@ -599,7 +599,8 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
             el: cardEl,
             pos: pos,
             label: pos.label,
-            card: card
+            card: card,
+            base_line: spreadData[index].base_line || ''
         });
     });
 
@@ -624,31 +625,33 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
 
                     flipCard(item.el, item.label, item.card);
 
-                    setTimeout(() => {
-                        wipeVoiceBox();
-                        const line = cardLinesData[item.label] || 'The card is silent.';
-                        speak(line, () => {
-                            flippedLocal += 1;
-                            cardClickLocked = false;
+                    // Instant base line — snaps in on click
+                    wipeVoiceBox();
+                    appendBaseLine(item.card.name, item.base_line || '');
 
-                            if (flippedLocal === 3) {
-                                appendPromptLine();
-                                candleAction = 'reveal-thread';
-                                const candle = document.getElementById('candle-container');
-                                if (candle) {
-                                    candle.classList.add('waiting');
-                                    candle.style.cursor = 'pointer';
-                                    candle.style.pointerEvents = 'auto';
-                                    candle.removeEventListener('click', handleCandleClick);
-                                    isAwaitingCandleClick = true;
-                                    candleClickTriggered = false;
-                                    candle.addEventListener('click', handleCandleClick);
-                                }
-                                interactionHint.textContent = '— click the candle when you are ready —';
-                                interactionHint.classList.add('visible', 'clickable');
+                    // MT's interpretation streams in immediately after
+                    const line = cardLinesData[item.label] || 'The card is silent.';
+                    speak(line, () => {
+                        flippedLocal += 1;
+                        cardClickLocked = false;
+
+                        if (flippedLocal === 3) {
+                            appendPromptLine();
+                            candleAction = 'reveal-thread';
+                            const candle = document.getElementById('candle-container');
+                            if (candle) {
+                                candle.classList.add('waiting');
+                                candle.style.cursor = 'pointer';
+                                candle.style.pointerEvents = 'auto';
+                                candle.removeEventListener('click', handleCandleClick);
+                                isAwaitingCandleClick = true;
+                                candleClickTriggered = false;
+                                candle.addEventListener('click', handleCandleClick);
                             }
-                        });
-                    }, 900);
+                            interactionHint.textContent = '— click the candle when you are ready —';
+                            interactionHint.classList.add('visible', 'clickable');
+                        }
+                    });
                 });
             }, idx * 250);
         });
@@ -736,7 +739,7 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
         brightenCandle();
         setTimeout(() => {
             interactionHint.classList.add('visible');
-            interactionHint.textContent = '— speak when you are ready —';
+            interactionHint.textContent = '— touch the flame when you are ready —';
 
             isAwaitingCandleClick = true;
             candleClickTriggered = false;
@@ -952,6 +955,7 @@ function hideThinkingState() {
 
     async function sendUserMessage(message) {
         console.log('📨 Sending user message:', message);
+        showThinkingState();
         try {
             const response = await fetch('/api/intake/turn', {
                 method: 'POST',
@@ -963,6 +967,7 @@ function hideThinkingState() {
             });
             const data = await response.json();
             console.log('📨 Raw reply from backend:', data);
+            hideThinkingState();
 
             if (data.error) {
                 console.error('Intake error:', data.error);
@@ -984,6 +989,7 @@ function hideThinkingState() {
             }
         } catch (e) {
             console.error('Failed to send message:', e);
+            hideThinkingState();
             speak('I am sorry, something has stirred the air. Let us try again.');
             showUserInput();
         }
@@ -1076,6 +1082,13 @@ function hideThinkingState() {
         prompt.textContent = "The three have spoken. Now they rest together, and their voices become one. When you are ready to hear them as a single breath, let the flame know.";
         voiceArea.appendChild(prompt);
         requestAnimationFrame(() => prompt.classList.add('visible'));
+    }
+
+    function appendBaseLine(cardName, baseLine) {
+    const el = document.createElement('div');
+    el.className = 'base-line';
+    el.textContent = `${cardName} — ${baseLine}`;
+    voiceArea.appendChild(el);
     }
 
     // --------------------------------------------------------------

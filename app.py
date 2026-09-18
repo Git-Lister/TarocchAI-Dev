@@ -38,7 +38,7 @@ app.add_static_files("/static", "static")
 def main():
     # Load CSS and JS via NiceGUI's methods (not inside index.html)
     ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
-    ui.add_body_html('<script src="/static/js/tarot.js?v=9"></script>')
+    ui.add_body_html('<script src="/static/js/tarot.js?v=10"></script>')
 
     # Load the HTML structure (no script/style tags inside)
     with open("static/index.html", "r", encoding="utf-8") as f:
@@ -89,7 +89,13 @@ async def generate_reading(data: dict):
         card = entry["card"]
         filename = card["name"].lower().replace(" ", "_").replace("-", "_") + ".png"
         entry["image_path"] = f"/static/img/cards/{filename}"
+
+        # Base line: first three keywords, capitalised, period-terminated.
+        keywords = card.get("keywords_upright", [])[:3]
+        entry["base_line"] = " ".join(f"{k.capitalize()}." for k in keywords) if keywords else ""
+
         print(f"🔍 Card: {card['name']} → {entry['image_path']}")
+        print(f"   base_line: {entry['base_line']}")
 
     reader = TarotReader()
 
