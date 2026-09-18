@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const voiceArea = document.getElementById('voice-text');
         if (madameArea) {
             madameArea.style.transition = 'all 0.8s ease';
-            madameArea.style.height = '45vh';
+            madameArea.style.height = '40vh';
             madameArea.style.overflow = 'hidden';
         }
         if (voiceArea) {
@@ -231,8 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add to voice area
         voiceArea.appendChild(sentence);
+        voiceArea.scrollTop = voiceArea.scrollHeight;
 
-        // Pre-create character spans wrapped in word containers to prevent mid-word line breaks
+        // Pre-create character spans wrapped in word containers
         container.innerHTML = '';
         const charSpans = [];
         const words = text.split(/(\s+)/);
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Build schedule (same timing logic as before)
+        // Build schedule (character timing)
         const chars = text.split('');
         const schedule = [];
         let time = 0;
@@ -315,7 +316,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (callback) callback();
                     if (voiceQueue.length > 0) {
                         const next = voiceQueue.shift();
-                        speak(next.text, next.callback);
+                        if (next.fast) speakFast(next.text, next.callback);
+                        else speak(next.text, next.callback);
                     }
                 }, 600);
                 return;
@@ -339,6 +341,81 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(renderNext, 300);
     }
 
+    // ============================================================
+    // SPEAK FAST — Word-group bursts for long-form content
+    // ============================================================
+
+    function speakFast(text, callback) {
+        text = text.replace(/\([^)]*\)/g, '').trim();
+
+        if (isSpeaking) {
+            voiceQueue.push({ text, callback, fast: true });
+            return;
+        }
+        isSpeaking = true;
+        expandTextBox();
+        startBreathing();
+
+        const sentence = document.createElement('div');
+        sentence.className = 'voice-sentence';
+        const container = document.createElement('span');
+        sentence.appendChild(container);
+        voiceArea.appendChild(sentence);
+        voiceArea.scrollTop = voiceArea.scrollHeight;
+
+        // Split text into 2-4 word groups
+        const tokens = text.split(/(\s+)/);
+        const groups = [];
+        let current = '';
+        for (const token of tokens) {
+            current += token;
+            if (/\s/.test(token)) {
+                const wordCount = current.split(/\s+/).filter(Boolean).length;
+                if (wordCount >= 2 + Math.floor(Math.random() * 3)) {
+                    groups.push(current);
+                    current = '';
+                }
+            }
+        }
+        if (current) groups.push(current);
+
+        let idx = 0;
+
+        function renderNext() {
+            if (idx >= groups.length) {
+                sentence.classList.add('visible');
+                manageVisibleSentences();
+                stopBreathing();
+
+                setTimeout(() => {
+                    isSpeaking = false;
+                    if (callback) callback();
+                    if (voiceQueue.length > 0) {
+                        const next = voiceQueue.shift();
+                        if (next.fast) speakFast(next.text, next.callback);
+                        else speak(next.text, next.callback);
+                    }
+                }, 400);
+                return;
+            }
+
+            const span = document.createElement('span');
+            span.className = 'materializing-char';
+            span.textContent = groups[idx];
+            container.appendChild(span);
+            requestAnimationFrame(() => span.classList.add('revealed'));
+
+            idx++;
+            setTimeout(renderNext, 30 + Math.random() * 50);
+        }
+
+        setTimeout(renderNext, 200);
+    }
+
+    // ============================================================
+    // MANAGE VISIBLE SENTENCES — keep max 3 in the voice area
+    // ============================================================
+
     function manageVisibleSentences() {
         const sentences = voiceArea.querySelectorAll('.voice-sentence');
         const maxVisible = 3;
@@ -353,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
+    
 // --------------------------------------------------------------
 // User Sentences
 // --------------------------------------------------------------
@@ -880,11 +957,9 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
         if (candleAction === 'reveal-thread') {
             candleAction = 'start-intake';
             wipeVoiceBox();
-            scheduleHighlights(threadTextData);
-            speak(threadTextData, () => {
+            speakFast(threadTextData, () => {
                 interactionHint.textContent = '— the reading is complete —';
                 interactionHint.classList.add('visible');
-                setTimeout(contractTextBox, 3000);
             });
             return;
         }
