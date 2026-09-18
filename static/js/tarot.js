@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let cardMeanings = {};
     let currentDisplay = 'thread';  // 'thread' | 'past' | 'present' | 'future'
     let fullReadingText = '';  // Store full reading for toggle
+    let cardClickLocked = false;
+    let cardLinesData = {};
+    let threadTextData = '';
+    let candleAction = 'start-intake';  // 'start-intake' | 'reveal-thread'
 
     const CARD_COUNT = 78;
     const SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
@@ -72,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const voiceArea = document.getElementById('voice-text');
         if (madameArea) {
             madameArea.style.transition = 'all 0.8s ease';
-            madameArea.style.maxHeight = '45vh'; /* Hard cap - expanded for reading */
+            madameArea.style.height = '45vh';
             madameArea.style.overflow = 'hidden';
         }
         if (voiceArea) {
@@ -90,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const madameArea = document.getElementById('madame-area');
         const voiceArea = document.getElementById('voice-text');
         if (madameArea) {
-            madameArea.style.maxHeight = '';
+            madameArea.style.height = '';
             madameArea.style.padding = '';
         }
         if (voiceArea) {
@@ -222,17 +226,40 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create a sentence element
         const sentence = document.createElement('div');
         sentence.className = 'voice-sentence';
-        const content = document.createElement('span');
-        content.id = 'voice-content';
-        sentence.appendChild(content);
+        const container = document.createElement('span');
+        sentence.appendChild(container);
 
         // Add to voice area
         voiceArea.appendChild(sentence);
 
-        // Clear the content span
-        const container = content;
+        // Pre-create character spans wrapped in word containers to prevent mid-word line breaks
+        container.innerHTML = '';
+        const charSpans = [];
+        const words = text.split(/(\s+)/);
+        words.forEach(word => {
+            if (/^\s+$/.test(word) || word === '') {
+                for (const ch of word) {
+                    const span = document.createElement('span');
+                    span.className = 'materializing-char';
+                    span.innerHTML = '&nbsp;';
+                    container.appendChild(span);
+                    charSpans.push(span);
+                }
+            } else {
+                const wordEl = document.createElement('span');
+                wordEl.className = 'word';
+                for (const ch of word) {
+                    const span = document.createElement('span');
+                    span.className = 'materializing-char';
+                    span.textContent = ch;
+                    wordEl.appendChild(span);
+                    charSpans.push(span);
+                }
+                container.appendChild(wordEl);
+            }
+        });
 
-        // Split text into characters
+        // Build schedule (same timing logic as before)
         const chars = text.split('');
         const schedule = [];
         let time = 0;
@@ -263,10 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             burstChars.forEach((c, idx) => {
                 const offset = idx * 30 + Math.random() * 25;
-                schedule.push({
-                    char: c,
-                    time: time + offset,
-                });
+                schedule.push({ char: c, time: time + offset });
             });
 
             const lastChar = burstChars[burstChars.length - 1];
@@ -282,11 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function renderNext() {
             if (scheduledIndex >= schedule.length) {
-                // All characters rendered
-                // Show the sentence
                 sentence.classList.add('visible');
-
-                // Manage visible sentences (keep max 3 visible)
                 manageVisibleSentences();
                 stopBreathing();
 
@@ -305,20 +325,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const next = schedule[scheduledIndex];
 
             if (now >= next.time) {
-                const span = document.createElement('span');
-                span.className = 'materializing-char';
-                if (next.char === ' ') {
-                    span.innerHTML = '&nbsp;';
-                } else {
-                    span.textContent = next.char;
+                const span = charSpans[scheduledIndex];
+                if (span) {
+                    setTimeout(() => span.classList.add('revealed'), Math.random() * 80);
                 }
-                container.appendChild(span);
-
-                const revealDelay = Math.random() * 80;
-                setTimeout(() => {
-                    span.classList.add('revealed');
-                }, revealDelay);
-
                 scheduledIndex++;
                 renderNext();
             } else {
@@ -510,11 +520,14 @@ function shuffleCards(callback) {
 // --------------------------------------------------------------
 // Deal From Deck — Replaces spreadAndReveal
 // --------------------------------------------------------------
-function dealFromDeck(spreadData, callback) {
+function dealFromDeck(spreadData, cardLines, threadText, callback) {
     if (!spreadData || spreadData.length === 0) {
         console.error('No spread data provided');
         return;
     }
+
+    cardLinesData = cardLines || {};
+    threadTextData = threadText || '';
 
     const positions = [
         { label: 'Past', offsetX: -180, offsetY: 0, rot: -4 },
@@ -590,6 +603,8 @@ function dealFromDeck(spreadData, callback) {
         });
     });
 
+    let flippedLocal = 0;
+
     // Animate deal: move 3 cards to positions
     setTimeout(() => {
         cardRefs.forEach((item, idx) => {
@@ -597,22 +612,41 @@ function dealFromDeck(spreadData, callback) {
                 item.el.style.opacity = '1';
                 item.el.style.transform = `translate(${item.pos.offsetX}px, ${item.pos.offsetY}px) rotate(${item.pos.rot}deg) scale(1)`;
                 item.el.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.1)';
-                // Enable click for flip
                 item.el.style.pointerEvents = 'auto';
                 item.el.style.cursor = 'pointer';
+
                 item.el.addEventListener('click', () => {
-                    if (cardClickMode !== 'flip') return;
                     if (item.el.dataset.flipped === 'true') return;
+                    if (cardClickLocked) return;
+
                     item.el.dataset.flipped = 'true';
-                    item.el.style.pointerEvents = 'none';
-                    item.el.style.cursor = 'default';
+                    cardClickLocked = true;
+
                     flipCard(item.el, item.label, item.card);
-                    flippedCount += 1;
-                    if (flippedCount === 3) {
-                        flippedCount = 0;
-                        cardClickMode = 'meaning';
-                        if (callback) callback();
-                    }
+
+                    setTimeout(() => {
+                        wipeVoiceBox();
+                        const line = cardLinesData[item.label] || 'The card is silent.';
+                        speak(line, () => {
+                            flippedLocal += 1;
+                            cardClickLocked = false;
+
+                            if (flippedLocal === 3) {
+                                appendPromptLine();
+                                candleAction = 'reveal-thread';
+                                const candle = document.getElementById('candle-container');
+                                if (candle) {
+                                    candle.classList.add('waiting');
+                                    candle.style.cursor = 'pointer';
+                                    candle.style.pointerEvents = 'auto';
+                                    candle.removeEventListener('click', handleCandleClick);
+                                    candle.addEventListener('click', handleCandleClick);
+                                }
+                                interactionHint.textContent = '— click the candle when you are ready —';
+                                interactionHint.classList.add('visible', 'clickable');
+                            }
+                        });
+                    }, 900);
                 });
             }, idx * 250);
         });
@@ -838,6 +872,17 @@ function dealFromDeck(spreadData, callback) {
         ];
         const ack = acknowledgements[Math.floor(Math.random() * acknowledgements.length)];
 
+        if (candleAction === 'reveal-thread') {
+            candleAction = 'start-intake';
+            wipeVoiceBox();
+            speak(threadTextData, () => {
+                interactionHint.textContent = '— the reading is complete —';
+                interactionHint.classList.add('visible');
+                setTimeout(contractTextBox, 3000);
+            });
+            return;
+        }
+
         speak(ack, () => {
             currentState = 'intake';
             startIntake();
@@ -964,20 +1009,20 @@ function hideThinkingState() {
             const data = await response.json();
             console.log('📖 API response:', data);
 
-            if (!data || !data.reading) {
-                console.error('📖 No reading in response:', data);
+            if (!data || !data.thread) {
+                console.error('📖 No thread in response:', data);
                 speak('The cards are silent tonight. Perhaps another time.');
                 interactionHint.textContent = '— the reading is complete —';
                 return;
             }
 
-            console.log('📖 Reading found, length:', data.reading.length);
+            console.log('📖 Reading found, length:', data.thread.length);
             currentState = 'complete';
             spreadData = data.spread;
 
-            // Store card meanings and full reading for later toggle
-            cardMeanings = data.card_meanings || {};
-            fullReadingText = data.reading;
+            // Store card lines and thread for later use
+            cardLinesData = data.card_lines || {};
+            threadTextData = data.thread;
 
             // Channeling state: minimum 2.5s hold during LLM latency
             const elapsed = Date.now() - fetchStart;
@@ -996,50 +1041,9 @@ function hideThinkingState() {
             shuffleCards(() => {
                 brightenCandle();
                 speak('Three cards. Past, Present, Future.', () => {
-                    dealFromDeck(data.spread, () => {
-                        console.log('📖 Cards dealt and flipped, showing reading');
-                        setTimeout(() => {
-                            // Remove "thinking" hint
-                            interactionHint.classList.remove('visible');
-
-                            // 6. Speak the full reading (cohesive) - use thread from structured response
-                            const threadText = data.card_meanings && data.card_meanings.thread 
-                                ? data.card_meanings.thread 
-                                : data.reading.replace(/\([^)]*\)/g, '').trim();
-                            const cleanReading = threadText.replace(/\([^)]*\)/g, '').trim();
-
-                            // 7. Schedule highlights before speaking
-                            scheduleHighlights(cleanReading);
-
-                            // 8. Speak the full reading
-                            expandTextBox();
-                            startBreathing();
-                            speak(cleanReading, () => {
-                                console.log('📖 Reading spoken');
-                                // 9. Attach meaning-click handlers to reveal cards
-                                const positions = ['Past', 'Present', 'Future'];
-                                document.querySelectorAll('.card.reveal-card').forEach((cardEl, idx) => {
-                                    cardEl.style.pointerEvents = 'auto';
-                                    cardEl.style.cursor = 'pointer';
-                                    cardEl.addEventListener('click', () => {
-                                        const pos = positions[idx];
-                                        if (currentDisplay === pos.toLowerCase()) {
-                                            // Toggle off — restore thread
-                                            currentDisplay = 'thread';
-                                            replaceVoiceContent(threadText);
-                                        } else {
-                                            currentDisplay = pos.toLowerCase();
-                                            const meaning = cardMeanings[pos] || 'The card is silent.';
-                                            replaceVoiceContent(meaning);
-                                        }
-                                    });
-                                });
-                                // 10. Done
-                                interactionHint.textContent = '— the reading is complete —';
-                                interactionHint.classList.add('visible');
-                                setTimeout(contractTextBox, 3000);
-                            });
-                        }, 600);
+                    dealFromDeck(data.spread, data.card_lines, data.thread, () => {
+                        // Called after the thread has been spoken on candle click
+                        console.log('📖 Reading sequence complete');
                     });
                 });
             });
@@ -1057,6 +1061,18 @@ function hideThinkingState() {
         sentence.className = 'voice-sentence visible';
         sentence.textContent = text;
         voiceArea.appendChild(sentence);
+    }
+
+    function wipeVoiceBox() {
+        voiceArea.innerHTML = '';
+    }
+
+    function appendPromptLine() {
+        const prompt = document.createElement('div');
+        prompt.className = 'prompt-line';
+        prompt.textContent = "The three have spoken. Now they rest together, and their voices become one. When you are ready to hear them as a single breath, let the flame know.";
+        voiceArea.appendChild(prompt);
+        requestAnimationFrame(() => prompt.classList.add('visible'));
     }
 
     // --------------------------------------------------------------
@@ -1112,7 +1128,15 @@ function hideThinkingState() {
                 hideUserInput();
                 userInput.value = '';
                 addUserSentence(message);
-                sendUserMessage(message);
+                // If a speak is in flight, wait one frame for isSpeaking to clear
+                const dispatch = () => {
+                    if (isSpeaking) {
+                        setTimeout(dispatch, 50);
+                    } else {
+                        sendUserMessage(message);
+                    }
+                };
+                dispatch();
             }
         }
     });
