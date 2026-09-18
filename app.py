@@ -39,7 +39,7 @@ app.add_static_files("/static", "static")
 def main():
     # Load CSS and JS via NiceGUI's methods (not inside index.html)
     ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
-    ui.add_body_html('<script src="/static/js/tarot.js?v=6"></script>')
+    ui.add_body_html('<script src="/static/js/tarot.js?v=8"></script>')
 
     # Load the HTML structure (no script/style tags inside)
     with open("static/index.html", "r", encoding="utf-8") as f:
@@ -78,24 +78,6 @@ async def intake_turn(data: dict):
     return {"reply": reply, "is_complete": is_complete, "sketch": sketch}
 
 
-import re
-
-# ... (keep existing imports)
-
-def parse_structured_reading(text: str) -> dict:
-    """Split LLM output on [THREAD]/[PAST]/[PRESENT]/[FUTURE] markers."""
-    sections = {"thread": "", "past": "", "present": "", "future": ""}
-    current = None
-    for line in text.split("\n"):
-        m = re.match(r"^\[(THREAD|PAST|PRESENT|FUTURE)\]\s*$", line.strip())
-        if m:
-            current = m.group(1).lower()
-            continue
-        if current:
-            sections[current] += line + "\n"
-    return {k: v.strip() for k, v in sections.items()}
-
-
 @app.post("/api/reading/generate")
 async def generate_reading(data: dict):
     """Generate a reading from the sketch."""
@@ -104,7 +86,6 @@ async def generate_reading(data: dict):
     if not spread:
         spread = draw_cards(3, ["Past", "Present", "Future"])
 
-    # Generate image path from card name
     for entry in spread:
         card = entry["card"]
         filename = card["name"].lower().replace(" ", "_").replace("-", "_") + ".png"
@@ -112,20 +93,20 @@ async def generate_reading(data: dict):
         print(f"🔍 Card: {card['name']} → {entry['image_path']}")
 
     reader = TarotReader()
-    full_reading = ""
+
+    # Stage 1: woven thread (streamed, concatenated)
+    thread = ""
     async for chunk in reader.stream_reading(sketch, spread):
-        full_reading += chunk
+        thread += chunk
 
-    save_session(sketch, spread, full_reading, data.get("mirror_response", ""))
+    # Stage 2: pithy card lines
+    card_lines = await reader.generate_card_lines(thread, spread)
 
-    parsed = parse_structured_reading(full_reading)
+    save_session(sketch, spread, thread, data.get("mirror_response", ""))
+
     return {
-        "reading": parsed["thread"] or full_reading,
-        "card_meanings": {
-            "Past": parsed["past"],
-            "Present": parsed["present"],
-            "Future": parsed["future"],
-        },
+        "thread": thread,
+        "card_lines": card_lines,
         "spread": spread,
     }
 
