@@ -640,6 +640,8 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
                                     candle.style.cursor = 'pointer';
                                     candle.style.pointerEvents = 'auto';
                                     candle.removeEventListener('click', handleCandleClick);
+                                    isAwaitingCandleClick = true;
+                                    candleClickTriggered = false;
                                     candle.addEventListener('click', handleCandleClick);
                                 }
                                 interactionHint.textContent = '— click the candle when you are ready —';
@@ -875,6 +877,7 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
         if (candleAction === 'reveal-thread') {
             candleAction = 'start-intake';
             wipeVoiceBox();
+            scheduleHighlights(threadTextData);
             speak(threadTextData, () => {
                 interactionHint.textContent = '— the reading is complete —';
                 interactionHint.classList.add('visible');
