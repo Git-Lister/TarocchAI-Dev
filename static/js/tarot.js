@@ -211,12 +211,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // SPEAK — Slow Materializing Text with Annotation Strip
     // ============================================================
 
+    function processQueue() {
+        if (isSpeaking) return;
+        if (voiceQueue.length > 0) {
+            const next = voiceQueue.shift();
+            if (next.finalReading) {
+                speakFinalReading(next.text, next.callback);
+            } else if (next.lineByLine) {
+                speakLineByLine(next.text, next.callback);
+            } else if (next.fast) {
+                speakFast(next.text, next.callback);
+            } else {
+                speak(next.text, next.callback);
+            }
+        }
+    }
+
     function speak(text, callback) {
         // Strip parenthetical annotations
         text = text.replace(/\([^)]*\)/g, '').trim();
 
         if (isSpeaking) {
-            voiceQueue.push({ text, callback });
+            voiceQueue.push({ text, callback, fast: false, lineByLine: false });
             return;
         }
         isSpeaking = true;
@@ -314,11 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     isSpeaking = false;
                     if (callback) callback();
-                    if (voiceQueue.length > 0) {
-                        const next = voiceQueue.shift();
-                        if (next.fast) speakFast(next.text, next.callback);
-                        else speak(next.text, next.callback);
-                    }
+                    processQueue();
                 }, 600);
                 return;
             }
@@ -349,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
         text = text.replace(/\([^)]*\)/g, '').trim();
 
         if (isSpeaking) {
-            voiceQueue.push({ text, callback, fast: true });
+            voiceQueue.push({ text, callback, fast: true, lineByLine: false });
             return;
         }
         isSpeaking = true;
@@ -390,11 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     isSpeaking = false;
                     if (callback) callback();
-                    if (voiceQueue.length > 0) {
-                        const next = voiceQueue.shift();
-                        if (next.fast) speakFast(next.text, next.callback);
-                        else speak(next.text, next.callback);
-                    }
+                    processQueue();
                 }, 400);
                 return;
             }
@@ -412,6 +420,246 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(renderNext, 200);
     }
 
+    // ============================================================
+    // SPEAK LINE BY LINE — Natural pacing for final readings
+    // ============================================================
+
+    function speakLineByLine(text, callback) {
+        text = text.replace(/\([^)]*\)/g, '').trim();
+
+        if (isSpeaking) {
+            voiceQueue.push({ text, callback, fast: false, lineByLine: true });
+            return;
+        }
+        isSpeaking = true;
+        expandTextBox();
+        startBreathing();
+
+        // Split text into sentences or lines
+        const lines = text.match(/[^.!?\n]+[.!?]*/g) || [text];
+        const cleanLines = lines.map(l => l.trim()).filter(l => l.length > 0);
+
+        let lineIndex = 0;
+
+        function processNextLine() {
+            if (lineIndex >= cleanLines.length) {
+                // All lines done
+                stopBreathing();
+                setTimeout(() => {
+                    isSpeaking = false;
+                    if (callback) callback();
+                    processQueue();
+                }, 800);
+                return;
+            }
+
+            const lineText = cleanLines[lineIndex];
+            lineIndex++;
+
+            // Create a new sentence element for this line
+            const sentence = document.createElement('div');
+            sentence.className = 'voice-sentence';
+            const container = document.createElement('span');
+            sentence.appendChild(container);
+
+            voiceArea.appendChild(sentence);
+            voiceArea.scrollTop = voiceArea.scrollHeight;
+
+            // Pre-create character spans
+            container.innerHTML = '';
+            const charSpans = [];
+            const words = lineText.split(/(\s+)/);
+            words.forEach(word => {
+                if (/^\s+$/.test(word) || word === '') {
+                    for (const ch of word) {
+                        const span = document.createElement('span');
+                        span.className = 'materializing-char';
+                        span.innerHTML = '&nbsp;';
+                        container.appendChild(span);
+                        charSpans.push(span);
+                    }
+                } else {
+                    const wordEl = document.createElement('span');
+                    wordEl.className = 'word';
+                    for (const ch of word) {
+                        const span = document.createElement('span');
+                        span.className = 'materializing-char';
+                        span.textContent = ch;
+                        wordEl.appendChild(span);
+                        charSpans.push(span);
+                    }
+                    container.appendChild(wordEl);
+                }
+            });
+
+            // Build schedule (slightly faster than default speak for readability)
+            const chars = lineText.split('');
+            const schedule = [];
+            let time = 0;
+            let i = 0;
+
+            const baseDelay = 40 + Math.random() * 30;
+            const punctuationDelay = 200 + Math.random() * 100;
+            const spaceDelay = 20 + Math.random() * 15;
+
+            while (i < chars.length) {
+                const char = chars[i];
+                let delay = baseDelay;
+
+                if (char === '.' || char === ',' || char === '!' || char === '?') {
+                    delay = punctuationDelay;
+                } else if (char === ' ') {
+                    delay = spaceDelay;
+                } else if (char === '—' || char === ';' || char === ':') {
+                    delay = punctuationDelay * 0.8;
+                }
+
+                let burstSize = 1;
+                if (Math.random() < 0.15) {
+                    burstSize = 2 + Math.floor(Math.random() * 3);
+                }
+
+                const burstChars = [];
+                for (let b = 0; b < burstSize && i < chars.length; b++) {
+                    burstChars.push(chars[i]);
+                    i++;
+                }
+
+                burstChars.forEach((c, idx) => {
+                    const offset = idx * 20 + Math.random() * 15;
+                    schedule.push({ char: c, time: time + offset });
+                });
+
+                const lastChar = burstChars[burstChars.length - 1];
+                if (lastChar === '.' || lastChar === ',' || lastChar === '!' || lastChar === '?') {
+                    time += delay + 150 + Math.random() * 100;
+                } else {
+                    time += delay;
+                }
+            }
+
+            let scheduledIndex = 0;
+            const startTime = Date.now();
+
+            function renderNextChar() {
+                if (scheduledIndex >= schedule.length) {
+                    sentence.classList.add('visible');
+                    manageVisibleSentences();
+
+                    // Pause before starting the next line
+                    setTimeout(processNextLine, 800 + Math.random() * 400);
+                    return;
+                }
+
+                const now = Date.now() - startTime;
+                const next = schedule[scheduledIndex];
+
+                if (now >= next.time) {
+                    const span = charSpans[scheduledIndex];
+                    if (span) {
+                        setTimeout(() => span.classList.add('revealed'), Math.random() * 40);
+                    }
+                    scheduledIndex++;
+                    renderNextChar();
+                } else {
+                    setTimeout(renderNextChar, 10);
+                }
+            }
+
+            setTimeout(renderNextChar, 200);
+        }
+
+        processNextLine();
+    }
+    // ============================================================
+    // SPEAK FINAL READING — Flowing word-by-word, persistent text
+    // ============================================================
+
+    function speakFinalReading(text, callback) {
+        text = text.replace(/\([^)]*\)/g, '').trim();
+
+        if (isSpeaking) {
+            voiceQueue.push({ text, callback, fast: false, lineByLine: false, finalReading: true });
+            return;
+        }
+        isSpeaking = true;
+        expandTextBox();
+        startBreathing();
+
+        // ONE single container for the whole final reading
+        const sentence = document.createElement('div');
+        sentence.className = 'voice-sentence final-reading-sentence';
+        sentence.classList.add('visible'); // Instantly visible so it doesn't fade in/out
+        
+        const container = document.createElement('span');
+        sentence.appendChild(container);
+        voiceArea.appendChild(sentence);
+        voiceArea.scrollTop = voiceArea.scrollHeight;
+
+        // Tokenize by words and whitespace (preserves line breaks and spaces)
+        const tokens = text.split(/(\s+)/);
+        let tokenIndex = 0;
+
+        function processNextToken() {
+            if (tokenIndex >= tokens.length) {
+                // All done
+                stopBreathing();
+                setTimeout(() => {
+                    isSpeaking = false;
+                    if (callback) callback();
+                    processQueue();
+                }, 1000);
+                return;
+            }
+
+            const token = tokens[tokenIndex];
+            tokenIndex++;
+
+            // Handle pure whitespace (spaces, newlines)
+            if (/^\s+$/.test(token) || token === '') {
+                container.appendChild(document.createTextNode(token));
+                // Quick transition for spaces, no delay
+                processNextToken();
+                return;
+            }
+
+            // It's a word — create the span
+            const wordEl = document.createElement('span');
+            wordEl.className = 'word';
+            for (const ch of token) {
+                const span = document.createElement('span');
+                span.className = 'materializing-char';
+                span.textContent = ch;
+                wordEl.appendChild(span);
+            }
+            container.appendChild(wordEl);
+            voiceArea.scrollTop = voiceArea.scrollHeight;
+
+            // Reveal characters in this word
+            const charSpans = wordEl.querySelectorAll('.materializing-char');
+            charSpans.forEach((span, idx) => {
+                setTimeout(() => {
+                    span.classList.add('revealed');
+                }, idx * 25 + Math.random() * 15);
+            });
+
+            // Determine pause after this word based on punctuation
+            let delay = 90 + Math.random() * 60; // Natural word pace
+            const lastChar = token[token.length - 1];
+            
+            if (lastChar === '.' || lastChar === '!' || lastChar === '?') {
+                delay = 600 + Math.random() * 300; // Long pause for sentences
+            } else if (lastChar === ',' || lastChar === ';' || lastChar === ':') {
+                delay = 350 + Math.random() * 150; // Medium pause for clauses
+            } else if (lastChar === '—') {
+                delay = 450;
+            }
+
+            setTimeout(processNextToken, delay);
+        }
+
+        processNextToken();
+    }
     // ============================================================
     // MANAGE VISIBLE SENTENCES — keep max 3 in the voice area
     // ============================================================
@@ -708,7 +956,7 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
 
                     // MT's interpretation streams in immediately after
                     const line = cardLinesData[item.label] || 'The card is silent.';
-                    speak(line, () => {
+                    speakFast(line, () => {
                         flippedLocal += 1;
                         cardClickLocked = false;
 
@@ -957,7 +1205,8 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
         if (candleAction === 'reveal-thread') {
             candleAction = 'start-intake';
             wipeVoiceBox();
-            speakFast(threadTextData, () => {
+            // Use the new final reading function
+            speakFinalReading(threadTextData, () => { 
                 interactionHint.textContent = '— the reading is complete —';
                 interactionHint.classList.add('visible');
             });
