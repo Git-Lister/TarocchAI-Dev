@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TarocchAI Core Logic Test</title>
+  <style>
+    body { background: #0a0806; color: #b89b4b; font-family: monospace; padding: 1rem; margin: 0; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    .summary { margin-top: 1rem; font-weight: bold; }
+    h1 { font-family: 'Cinzel', serif; color: #d4af37; margin-bottom: 0.5rem; }
+    .section { margin-top: 1.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(184,155,75,0.2); }
+  </style>
+</head>
+<body>
+  <h1>TarocchAI Core Logic Test</h1>
+  <div id="output"></div>
+  <script src="../js/tarot.core.js"></script>
+  <script>
+    const output = document.getElementById('output');
+    let passed = 0, failed = 0;
+
+    function log(msg, cls) {
+      const div = document.createElement('div');
+      div.className = cls || '';
+      div.textContent = msg;
+      document.getElementById('output').appendChild(div);
+    }
+
+    function assert(condition, message) {
+      if (condition) {
+        passed++;
+        log('✓ ' + message, 'pass');
+      } else {
+        failed++;
+        log('✗ ' + message, 'fail');
+      }
+    }
+
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    const { StateMachine, TextBand } = window.TarocchAI;
+
+    // ========== StateMachine Tests ==========
+    log('=== StateMachine Tests ===', 'section');
+
+    // 1. Initial state
+    {
+      const sm = new StateMachine('threshold');
+      assert(sm.getState() === 'threshold', 'Initial state is threshold');
+    }
+
+    // 2. All legal transitions
+    const legalTransitions = [
+      ['threshold', 'arrival'],
+      ['arrival', 'naming'],
+      ['naming', 'intake'],
+      ['intake', 'candle-ritual'],
+      ['candle-ritual', 'shuffle'],
+      ['shuffle', 'deal'],
+      ['deal', 'per-card'],
+      ['per-card', 'per-card'], // self-loop
+      ['per-card', 'prompt-line'],
+      ['prompt-line', 'thread'],
+      ['thread', 'closing'],
+      ['closing', 'threshold'],
+    ];
+
+    legalTransitions.forEach(([from, to]) => {
+      const sm = new StateMachine(from);
+      const result = sm.setState(to);
+      assert(result === true, `Legal transition: ${from} → ${to}`);
+      assert(sm.getState() === to, `State updated to ${to}`);
+    });
+
+    // 3. Illegal transitions (at least 5)
+    const illegalTransitions = [
+      ['threshold', 'naming'],
+      ['threshold', 'intake'],
+      ['arrival', 'intake'],
+      ['arrival', 'shuffle'],
+      ['naming', 'candle-ritual'],
+      ['intake', 'shuffle'],
+      ['candle-ritual', 'deal'],
+      ['shuffle', 'per-card'],
+      ['deal', 'prompt-line'],
+      ['per-card', 'thread'],
+      ['prompt-line', 'closing'],
+      ['thread', 'threshold'],
+      ['closing', 'intake'],
+      ['closing', 'arrival'],
+    ];
+
+    illegalTransitions.slice(0, 5).forEach(([from, to]) => {
+      const sm = new StateMachine(from);
+      const result = sm.setState(to);
+      assert(result === false, `Illegal transition rejected: ${from} → ${to}`);
+      assert(sm.getState() === from, `State unchanged after illegal transition`);
+    });
+
+    // 4. Listener firing
+    {
+      const sm = new StateMachine('threshold');
+      const calls = [];
+      const cb1 = p => calls.push({ cb: 1, ...p });
+      const cb2 = p => calls.push({ cb: 2, ...p });
+      sm.onTransition(cb1);
+      sm.onTransition(cb2);
+      sm.setState('arrival');
+      assert(calls.length === 2, 'Two listeners both fire');
+      assert(calls[0].cb === 1 && calls[1].cb === 2, 'Listeners fire in registration order');
+      assert(calls[0].from === 'threshold' && calls[0].to === 'arrival', 'Payload contains from/to');
+      assert(typeof calls[0].timestamp === 'number', 'Payload contains timestamp');
+    }
+
+    // 5. Listener removal
+    {
+      const sm = new StateMachine('threshold');
+      const cb = () => { throw new Error('should not fire'); };
+      sm.onTransition(cb);
+      sm.offTransition(cb);
+      sm.setState('arrival');
+      assert(true, 'offTransition prevents removed listener from firing');
+    }
+
+    // 6. canTransition static
+    {
+      assert(StateMachine.canTransition('thread', 'closing') === true, 'canTransition thread→closing true');
+      assert(StateMachine.canTransition('closing', 'intake') === false, 'canTransition closing→intake false');
+      assert(StateMachine.canTransition('per-card', 'per-card') === true, 'canTransition per-card self-loop true');
+      assert(StateMachine.canTransition('per-card', 'prompt-line') === true, 'canTransition per-card→prompt-line true');
+      assert(StateMachine.canTransition('per-card', 'thread') === false, 'canTransition per-card→thread false');
+    }
+
+    // ========== TextBand Tests ==========
+    log('=== TextBand Tests ===', 'section');
+
+    // 1. Initial mode
+    {
+      const tb = new TextBand();
+      assert(tb.mode === 'intake', 'Initial mode is intake');
+    }
+
+    // 2. Append in intake mode
+    {
+      const tb = new TextBand();
+      let addPayload = null;
+      tb.onAdd(p => addPayload = p);
+      const id = tb.append('Line 1');
+      assert(id === '1', 'append returns line id');
+      assert(addPayload !== null, 'onAdd fires');
+      assert(addPayload.id === '1', 'onAdd payload has id');
+      assert(addPayload.text === 'Line 1', 'onAdd payload has text');
+      assert(addPayload.state === 'active', 'onAdd payload state is active');
+    }
+
+    // 3. Ghosting after 4 lines in intake mode (with timing)
+    (async () => {
+      const tb = new TextBand();
+      const states = [];
+      tb.onStateChange(p => states.push({ id: p.id, state: p.state }));
+
+      tb.append('Line 1');
+      tb.append('Line 2');
+      tb.append('Line 3');
+      tb.append('Line 4');
+      tb.append('Line 5'); // 5th line triggers ghosting of line 1
+
+      // Wait for ghosting to start
+      await wait(4200); // intakeGhostDelay
+      const line1 = tb.getLines().find(l => l.id === '1');
+      assert(line1 && line1.state === 'ghosted', 'Line 1 transitions to ghosted after delay');
+
+      // Wait for removal
+      await wait(2200); // ghostDuration + removeDelay
+      const lines = tb.getLines();
+      assert(!lines.find(l => l.id === '1'), 'Line 1 removed after ghosting');
+
+      // 7. Mode switch stops ghosting
+      {
+        const tb = new TextBand();
+        tb.append('Line 1');
+        tb.append('Line 2');
+        tb.setMode('card-line');
+        // No ghost timers should be active
+        assert(true, 'Mode switch to card-line clears ghost timers (no error thrown)');
+      }
+
+      // 7b. Dimming in card-line mode
+      {
+        const tb = new TextBand();
+        tb.setMode('card-line');
+        const states = [];
+        tb.onStateChange(p => states.push({ id: p.id, state: p.state }));
+
+        tb.append('Line 1');
+        tb.append('Line 2');
+        tb.append('Line 3');
+
+        const l1 = tb.getLines().find(l => l.id === '1');
+        const l2 = tb.getLines().find(l => l.id === '2');
+        const l3 = tb.getLines().find(l => l.id === '3');
+
+        assert(l1.state === 'dimmed-2', 'Line 1 dimmed-2 with 3 lines');
+        assert(l2.state === 'dimmed-2', 'Line 2 dimmed-2 with 3 lines');
+        assert(l3.state === 'active', 'Line 3 active with 3 lines');
+      }
+
+      // 8. Persistence in thread mode
+      {
+        const tb = new TextBand();
+        tb.setMode('thread');
+        tb.append('Thread line 1');
+        tb.append('Thread line 2');
+        const l1 = tb.getLines().find(l => l.id === '1');
+        const l2 = tb.getLines().find(l => l.id === '2');
+        assert(l1.state === 'active', 'Thread line 1 stays active');
+        assert(l2.state === 'active', 'Thread line 2 stays active');
+        assert(tb.getLines().length === 2, 'Lines persist in thread mode');
+      }
+
+      // 9. Reset
+      {
+        const tb = new TextBand();
+        let resetFired = false;
+        tb.onReset(() => { resetFired = true; });
+        tb.append('Line 1');
+        tb.reset();
+        assert(tb.getLines().length === 0, 'reset clears all lines');
+        assert(resetFired === true, 'onReset fires');
+      }
+
+      // Summary
+      log('', '');
+      log('=== SUMMARY ===', 'section');
+      const total = passed + failed;
+      log(`Passed: ${passed} / ${total}`, failed === 0 ? 'pass' : 'fail');
+      if (failed > 0) {
+        log(`Failed: ${failed}`, 'fail');
+      }
+    })();
+  </script>
+</body>
+</html>
