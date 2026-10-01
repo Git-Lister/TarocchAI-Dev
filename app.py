@@ -37,8 +37,9 @@ app.add_static_files("/static", "static")
 @ui.page("/")
 def main():
     # Load CSS and JS via NiceGUI's methods (not inside index.html)
-    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css">')
-    ui.add_body_html('<script src="/static/js/tarot.js?v=16"></script>')
+    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css?v=17">')
+    ui.add_body_html('<script src="/static/js/slab-pattern.js?v=1"></script>')
+    ui.add_body_html('<script src="/static/js/tarot.js?v=17"></script>')
 
     # Load the HTML structure (no script/style tags inside)
     with open("static/index.html", "r", encoding="utf-8") as f:

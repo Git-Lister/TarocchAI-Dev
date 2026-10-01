@@ -4,89 +4,73 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TarocchAI — The Liminal Room</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400&family=JetBrains+Mono:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
-
-    <div id="scene">
-
+    <div class="scene" id="room">
         <div id="candle-light"></div>
 
-        <!-- Threshold -->
-        <div id="threshold">
-            <div class="sigil">✦</div>
-            <div class="wait-text">Silence gathers...</div>
+        <div class="room-base"></div>
+        <div class="room-perspective"><div class="room-floor-plane"></div></div>
+        <div class="room-ceiling"><div class="room-ceiling-plane"></div></div>
+        <div class="horizon"></div>
+
+        <div class="field">
+            <div class="field-layer l1"></div>
+            <div class="field-layer l2"></div>
+            <div class="field-layer l3"></div>
         </div>
+    <!-- MT's voice — materialises on the table, above the cards -->
+    <div class="mt-voice" id="voice-text"></div>
+        <div class="slab">
+            <div class="slab-top">
+                <div class="slab-pattern" id="slab-pattern"></div>
+                <div class="slab-far-line"></div>
+                <div class="slab-frame"></div>
+                <div class="slab-far-shadow"></div>
+            </div>
+            <div class="slab-face"></div>
 
-        <!-- Room -->
-        <div id="room">
 
-            <div class="table" id="table">
 
-                <!-- Name Gate -->
-                <div class="name-gate" id="name-gate">
-                    <div class="name-gate-text">"By what name shall I know you?"</div>
-                    <div class="name-gate-input-area">
-                        <input type="text" id="name-input" placeholder="..." />
-                        <span class="name-gate-arrow">↵</span>
-                    </div>
-                </div>
+            <!-- Cards — moved down closer to user -->
+            <div class="cards-row" id="deck-area"></div>
 
-                <!-- ========================================== -->
-                <!-- TOP: Madame Tarocchai's Dynamic Text Box   -->
-                <!-- ========================================== -->
-                <div class="madame-area" id="madame-area">
-                    <div class="voice-area" id="voice-text">
-                        <!-- Sentences injected by JS -->
-                    </div>
-                </div>
-
-                <!-- ========================================== -->
-                <!-- MIDDLE: Cards + Breathing Presence        -->
-                <!-- ========================================== -->
-                <div class="cards-section">
-                    <!-- Breathing Presence (behind cards) -->
-                    <div class="breathing-presence" id="breathing-presence"></div>
-
-                    <!-- Cards -->
-                    <div class="deck-area" id="deck-area">
-                        <!-- Cards injected by JS -->
-                    </div>
-                </div>
-
-                <!-- ========================================== -->
-                <!-- CANDLE (below cards)     -->
-                <!-- ========================================== -->
-                <div class="candle-section">
-                    <div class="candle-container" id="candle-container">
-                        <div class="candle-flame" id="flame"></div>
-                        <div class="candle-wick"></div>
-                        <div class="candle-body"></div>
-                    </div>
-                </div>
-
-                <!-- ========================================== -->
-                <!-- BOTTOM: User messages + Input -->
-                <!-- ========================================== -->
-                <div class="user-area">
-                    <div class="user-messages" id="user-messages">
-                        <!-- User sentences injected by JS -->
-                    </div>
-                    <div class="user-input-wrapper">
-                        <div class="input-bar" id="user-input-area">
-                            <input type="text" id="user-input" placeholder="..." />
-                            <span class="input-arrow">↵</span>
-                        </div>
-                        <div class="interaction-hint" id="interaction-hint">
-                            — speak when you are ready —
-                        </div>
-                    </div>
-                </div>
-
+            <!-- Floating flame candle — total juxtaposition -->
+            <div class="floating-flame" id="candle-container">
+                <div class="glow"></div>
+                <div class="flame-core"></div>
+                <div class="flame-wisp"></div>
             </div>
         </div>
 
+        <!-- User's voice — single line just above the table's near edge -->
+        <div class="user-voice" id="user-messages"></div>
+
+        <div class="room-bottom-fade"></div>
+
+        <div class="user-input-area" id="user-input-area">
+            <div class="user-input-bar">
+                <input type="text" id="user-input" placeholder="">
+                <span class="arrow">—</span>
+            </div>
+        </div>
     </div>
 
+    <div id="threshold">
+        <div class="sigil">✦</div>
+        <div class="wait-text">A room is waiting...</div>
+    </div>
+
+    <div id="name-gate">
+        <div class="name-gate-text">What shall I call you?</div>
+        <div class="name-gate-input-area">
+            <input type="text" id="name-input" placeholder="">
+            <span class="name-gate-arrow">—</span>
+        </div>
+    </div>
+<p id="interaction-hint" class="interaction-hint"></p>
 </body>
 </html>

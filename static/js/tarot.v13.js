@@ -23,9 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Cycle 2A: activate threshold on load
-    threshold.classList.add('active');
-
     // State
     let scene = 'threshold';
     let voiceQueue = [];
@@ -1096,7 +1093,7 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
 
         console.log('🔄 transitionToRoom started');
 
-        threshold.classList.remove('active');
+        threshold.classList.add('hidden');
         showCandle();
 
         // Make sure room element exists
