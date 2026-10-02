@@ -69,10 +69,10 @@
   --font-still:      'IBM Plex Mono', ui-monospace, monospace;
 
   /* --- Card dimensions --- */
-  --card-width:           110px;   /* was 130px */
-  --card-height:          171px;   /* was 202px */
-  --reveal-card-width:    165px;   /* was 190px */
-  --reveal-card-height:   256px;   /* was 295px */
+  --card-width:           clamp(120px, 8.2vw, 200px);
+  --card-height:          calc(var(--card-width) * 1.553);
+  --reveal-card-width:    clamp(160px, 10.6vw, 260px);
+  --reveal-card-height:   calc(var(--reveal-card-width) * 1.553);
   --card-back-image:      url('/static/img/card_back.png');
 
   /* --- Easings --- */
@@ -456,7 +456,7 @@ html, body,
 .cards-row {
   position: absolute;
   left: 50%;
-  top: 22%;
+  top: 10%;        /* was 41% — moves cards up */
   transform: translateX(-50%);
   z-index: 20;
   width: 80%;
@@ -539,16 +539,13 @@ html, body,
 }
 
 
-/* ============================================================
-   6. FLOATING FLAME (CANDLE) — enlarged, with reflection
-   ============================================================ */
-
+/* WAXY CANDLE IN BRASS DISH — replaces floating flame */
 .floating-flame {
   position: absolute;
   right: 14%;
-  top: 38%;
-  width: 40px;
-  height: 60px;
+  top: 36%;
+  width: 46px;
+  height: 90px;
   z-index: 22;
   pointer-events: auto;
   cursor: pointer;
@@ -559,7 +556,7 @@ html, body,
 }
 
 .floating-flame.visible  { opacity: 1; }
-.floating-flame.bright   { opacity: 1; filter: drop-shadow(0 0 40px rgba(255, 200, 80, 0.6)); }
+.floating-flame.bright   { opacity: 1; filter: drop-shadow(0 0 30px rgba(255, 200, 80, 0.55)); }
 .floating-flame.dim      { opacity: 0.35; }
 .floating-flame.waiting  {
   animation: pulse-glow 2s ease-in-out infinite;
@@ -567,48 +564,76 @@ html, body,
   pointer-events: auto;
 }
 
-/* Outer halo — larger, warmer */
+/* Wax body */
+.floating-flame::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 46px;
+  border-radius: 3px 3px 2px 2px;
+  background:
+    linear-gradient(to right,
+      rgba(60, 45, 28, 0.95) 0%,
+      #c8a870 22%,
+      #e8d8b0 50%,
+      #c8a870 78%,
+      rgba(60, 45, 28, 0.95) 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.85),
+    inset 0 -3px 6px rgba(90, 60, 30, 0.4),
+    inset 0 2px 4px rgba(255, 240, 200, 0.15);
+}
+
+/* Brass dish under the wax */
+.floating-flame::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 52px;
+  height: 14px;
+  border-radius: 50% 50% 30% 30% / 65% 65% 35% 35%;
+  background: radial-gradient(ellipse at 50% 30%,
+    #d4a838 0%,
+    #a87a2a 35%,
+    #5a3a10 75%,
+    #2a1a08 100%);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.9),
+    inset 0 2px 3px rgba(255, 220, 120, 0.35),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* Ambient warm halo — tighter now, no longer an abstract glow */
 .floating-flame .glow {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 30%;
   transform: translate(-50%, -50%);
-  width: 300px;
-  height: 300px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   background: radial-gradient(circle,
-    rgba(255, 190, 80, 0.48) 0%,
-    rgba(255, 140, 40, 0.20) 35%,
+    rgba(255, 190, 80, 0.32) 0%,
+    rgba(255, 140, 40, 0.13) 35%,
     transparent 70%);
-  filter: blur(20px);
+  filter: blur(18px);
   animation: glow-pulse 4s ease-in-out infinite;
   pointer-events: none;
 }
 
-/* Wick — a faint vertical line below the flame, suggesting root */
-.floating-flame .flame-core::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translateX(-50%);
-  width: 1px;
-  height: 18px;
-  background: linear-gradient(to bottom,
-    rgba(255, 220, 120, 0.8) 0%,
-    rgba(255, 160, 60, 0.4) 50%,
-    transparent 100%);
-  filter: blur(0.6px);
-  pointer-events: none;
-}
-
+/* Flame */
 .floating-flame .flame-core {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 38px;
+  bottom: 52px;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 30px;
   border-radius: 50% 50% 45% 45% / 62% 62% 38% 38%;
   background: radial-gradient(ellipse at 50% 70%,
     #ffffff 0%,
@@ -618,21 +643,36 @@ html, body,
     transparent 100%);
   filter:
     blur(0.4px)
-    drop-shadow(0 0 16px rgba(255, 220, 120, 1))
-    drop-shadow(0 0 44px rgba(255, 160, 60, 0.85))
-    drop-shadow(0 0 100px rgba(255, 100, 20, 0.5));
+    drop-shadow(0 0 12px rgba(255, 220, 120, 1))
+    drop-shadow(0 0 36px rgba(255, 160, 60, 0.75))
+    drop-shadow(0 0 80px rgba(255, 100, 20, 0.4));
   animation: flame-drift 3.4s ease-in-out infinite;
   transform-origin: 50% 100%;
   pointer-events: none;
 }
 
+/* Wick — tiny dark line between wax and flame */
+.floating-flame .flame-core::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 6px;
+  background: #140e0a;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+/* Inner white wisp of flame */
 .floating-flame .flame-wisp {
   position: absolute;
   left: 50%;
-  top: 44%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 22px;
+  bottom: 60px;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 16px;
   border-radius: 50%;
   background: radial-gradient(ellipse at 50% 60%,
     #ffffff 0%,
@@ -640,23 +680,6 @@ html, body,
     transparent 100%);
   filter: blur(1.5px);
   animation: wisp 3.4s ease-in-out infinite;
-  pointer-events: none;
-}
-
-/* Reflection on the table surface */
-.floating-flame::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translate(-50%, 0);
-  width: 120px;
-  height: 90px;
-  background: radial-gradient(ellipse at 50% 0%,
-    rgba(255, 180, 60, 0.38) 0%,
-    rgba(255, 120, 30, 0.16) 40%,
-    transparent 78%);
-  filter: blur(14px);
   pointer-events: none;
 }
 
@@ -674,20 +697,30 @@ html, body,
   z-index: 12;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
-  overflow: hidden !important;
-  pointer-events: none;
+  padding-bottom: 10px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  pointer-events: auto;
   -webkit-mask-image: linear-gradient(to bottom,
     transparent 0%,
-    black 20%,
-    black 80%,
+    black 5%,
+    black 95%,
     transparent 100%);
           mask-image: linear-gradient(to bottom,
     transparent 0%,
-    black 20%,
-    black 80%,
+    black 5%,
+    black 95%,
     transparent 100%);
+}
+
+.mt-voice::before {
+  content: "";
+  display: block;
+  margin-top: auto;
+  flex-shrink: 0;
+  height: 0;
 }
 
 .voice-sentence {
@@ -750,12 +783,15 @@ html, body,
 
 .base-line {
   font-family: var(--font-still);
-  font-size: 12px;
-  color: rgba(184, 155, 75, 0.7);
-  letter-spacing: 0.06em;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(212, 175, 55, 0.95);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
   text-align: center;
-  padding: 0.2rem 0;
-  border-bottom: 1px solid rgba(184, 155, 75, 0.15);
+  padding: 0.5rem 0 0.55rem 0;
+  border-bottom: 1px solid rgba(184, 155, 75, 0.28);
+  text-shadow: 0 0 14px rgba(212, 175, 55, 0.4);
 }
 
 .materializing-char {
@@ -855,33 +891,52 @@ html, body,
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
+.user-input-bar {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  background: rgba(28, 18, 12, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 3px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(212, 175, 55, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
 #user-input {
   width: 100%;
   height: 100%;
-  padding: 0 28px 0 0;
+  padding: 0 30px 0 0;
   background: transparent;
   border: none;
   outline: none;
   font-family: var(--font-alive);
   font-weight: 300;
   font-style: italic;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.01em;
   color: var(--parchment);
-  caret-color: var(--gold-mid);
+  caret-color: var(--gold-bright);
 }
+
 #user-input::placeholder {
-  color: rgba(140, 120, 80, 0.65);
+  color: rgba(212, 175, 55, 0.55);
   font-style: italic;
 }
 
 .user-input-bar .arrow {
   position: absolute;
-  right: 18px;
+  right: 22px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(184, 155, 75, 0.32);
-  font-size: 11px;
+  color: rgba(212, 175, 55, 0.65);
+  font-size: 12px;
   pointer-events: none;
 }
 
@@ -895,13 +950,13 @@ html, body,
   left: 0;
   right: 0;
   bottom: 0;
-  height: 20%;    /* was 10% */
+  height: 10%;
   z-index: 40;
   pointer-events: none;
   background: linear-gradient(to bottom,
     transparent 0%,
-    rgba(0, 0, 0, 0.7) 40%,
-    rgba(0, 0, 0, 0.98) 100%);
+    rgba(0, 0, 0, 0.20) 65%,
+    rgba(0, 0, 0, 0.45) 100%);
 }
 
 #candle-light {
@@ -928,10 +983,11 @@ html, body,
   z-index: 60;
   margin: 0;
   font-family: var(--font-still);
-  font-size: clamp(0.7rem, 1vw, 1.1rem);
+  font-size: clamp(0.75rem, 1.05vw, 1.15rem);
   letter-spacing: 0.15em;
-  color: rgba(184, 155, 75, 0.25);
+  color: rgba(212, 175, 55, 0.75);
   text-align: center;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
   pointer-events: none;
   opacity: 0;
   transition: opacity 1.5s var(--ease-soft);
@@ -941,7 +997,8 @@ html, body,
 }
 #interaction-hint.clickable {
   pointer-events: auto;
-  color: rgba(184, 155, 75, 0.45);
+  color: rgba(212, 175, 55, 0.95);
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.55);
   cursor: pointer;
 }
 
@@ -1085,6 +1142,172 @@ html, body,
 @keyframes thinking-pulse {
   0%, 100% { opacity: 0.2; }
   50%      { opacity: 0.8; }
+}
+
+/* ============================================================
+   CYCLE 2C — Card pour animation
+   ============================================================ */
+
+@keyframes card-pour {
+  0% {
+    transform: translate(0, -80vh) rotate(var(--pour-start-rot, 0deg)) scale(0.35);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) rotate(var(--pour-end-rot, 0deg)) scale(0.7);
+    opacity: 1;
+  }
+}
+
+.card.pouring {
+  animation-name: card-pour;
+  animation-duration: 700ms;
+  animation-fill-mode: forwards;
+  animation-timing-function: cubic-bezier(0.34, 1.15, 0.64, 1);
+  pointer-events: none;
+}
+
+
+/* ============================================================
+   CYCLE 3 — Closing state and exit
+   ============================================================ */
+
+.closing-options {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  z-index: 55;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+.closing-options.active {
+  display: flex;
+  pointer-events: auto;
+}
+
+.closing-line {
+  font-family: var(--font-alive);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--parchment);
+  text-shadow:
+    0 0 18px rgba(184, 155, 75, 0.30),
+    0 0 40px rgba(140, 90, 40, 0.14),
+    0 2px 4px rgba(0, 0, 0, 0.85);
+  margin: 0 0 6px 0;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease-soft);
+}
+.closing-options.active .closing-line {
+  opacity: 1;
+}
+
+.closing-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 48px;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease-soft) 0.4s;
+}
+.closing-options.active .closing-buttons {
+  opacity: 1;
+}
+
+.closing-button {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-family: var(--font-alive);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  color: rgba(212, 175, 55, 0.7);
+  cursor: pointer;
+  transition: color 0.3s var(--ease-soft), text-shadow 0.3s var(--ease-soft);
+  text-shadow: 0 0 12px rgba(184, 155, 75, 0.2);
+}
+.closing-button:hover {
+  color: rgba(255, 240, 200, 1);
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.55);
+}
+.closing-button:focus-visible {
+  outline: 1px solid rgba(212, 175, 55, 0.5);
+  outline-offset: 4px;
+}
+
+/* Exit overlay — full-screen black fade */
+.exit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s ease;
+}
+.exit-overlay.active {
+  opacity: 1;
+}
+
+/* Smoke puff — spawned dynamically during snuff */
+.flame-smoke {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(180, 180, 180, 0.55) 0%,
+    rgba(120, 120, 120, 0.25) 45%,
+    transparent 80%);
+  filter: blur(6px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 0) scale(0.4);
+}
+.flame-smoke.rising {
+  animation: smoke-rise 1600ms ease-out forwards;
+}
+@keyframes smoke-rise {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, 0) scale(0.4);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translate(-60%, -40px) scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-40%, -110px) scale(2.4);
+  }
+}
+
+/* Flame — brief flicker and snuff */
+.floating-flame.snuff-flicker .flame-core {
+  animation: snuff-flicker 150ms ease-in-out 3;
+}
+@keyframes snuff-flicker {
+  0%, 100% { opacity: 0.9; transform: translate(-50%, -50%) scale(1, 1); }
+  50%      { opacity: 0.4; transform: translate(-50%, -50%) scale(0.85, 1.15); }
+}
+.floating-flame.snuffed .flame-core,
+.floating-flame.snuffed .flame-wisp,
+.floating-flame.snuffed .glow {
+  opacity: 0;
+  transition: opacity 250ms ease;
 }
 
 

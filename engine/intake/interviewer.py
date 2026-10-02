@@ -63,9 +63,9 @@ class IntakeInterviewer:
 
     async def start(self) -> str:
         opener = (
-            "Let's sit quietly for a moment. "
-            "There's an object on the table between us. "
-            "What is it? Let the first thing rise to the surface."
+            "Gaze into the space between us. "
+            "Allow something to arise there — the first thing, "
+            "or the thing you came to ask. Tell me what you see."
         )
         self.history.append({"role": "assistant", "content": opener})
         return opener
@@ -75,9 +75,9 @@ class IntakeInterviewer:
         reflection_prompt = (
             "The querent just said: " + user_message + "\n\n"
             "Reflect on this briefly, in your own voice. One sentence only. "
-            "Be insightful, perhaps a little intrusive, but not rude. "
-            "If the message was very short, just acknowledge it briefly. "
-            "Keep it under 15 words."
+            "Be quietly observant — not flattering, not probing. The querent "
+            "should feel seen, not studied. If the message was very short, "
+            "just acknowledge it briefly. Keep it under 15 words."
         )
         self.history.append({"role": "user", "content": reflection_prompt})
         response = await self._get_response()

@@ -48,6 +48,22 @@ document.addEventListener('DOMContentLoaded', function() {
     let candleAction = 'start-intake';  // 'start-intake' | 'reveal-thread'
 
     const CARD_COUNT = 78;
+    const SHUFFLE_ADJECTIVES = [
+        'slowly',
+        'quietly',
+        'eagerly',
+        'softly',
+        'patiently',
+        'reluctantly',
+        'swiftly',
+        'sleepily',
+        'deliberately',
+        'curiously',
+        'insistently',
+        'gently',
+        'as if remembering',
+        'as if they have waited'
+    ];
     const SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
 
 
@@ -124,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
         "You've been here before, haven't you?",
         "I was beginning to wonder when you'd arrive.",
         "The cards have been restless all evening.",
-        "The photograph on the table... I think you know who it is."
     ];
 
     const TIME_GREETINGS = {
@@ -218,7 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isSpeaking) return;
         if (voiceQueue.length > 0) {
             const next = voiceQueue.shift();
-            if (next.finalReading) {
+            if (next.flow) {
+                speakFlow(next.text, next.callback);
+            } else if (next.finalReading) {
                 speakFinalReading(next.text, next.callback);
             } else if (next.lineByLine) {
                 speakLineByLine(next.text, next.callback);
@@ -250,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add to voice area
         voiceArea.appendChild(sentence);
-        voiceArea.scrollTop = voiceArea.scrollHeight;
+        if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
 
         // Pre-create character spans wrapped in word containers
         container.innerHTML = '';
@@ -360,6 +377,91 @@ document.addEventListener('DOMContentLoaded', function() {
     // SPEAK FAST — Word-group bursts for long-form content
     // ============================================================
 
+    // ============================================================
+    // SPEAK FLOW — word-by-word, ghost-aware (for MT's intake replies)
+    // ============================================================
+
+    function speakFlow(text, callback) {
+        text = text.replace(/\([^)]*\)/g, '').trim();
+
+        if (isSpeaking) {
+            voiceQueue.push({ text, callback, flow: true });
+            return;
+        }
+        isSpeaking = true;
+        expandTextBox();
+        startBreathing();
+
+        const sentence = document.createElement('div');
+        sentence.className = 'voice-sentence';
+        const container = document.createElement('span');
+        sentence.appendChild(container);
+        voiceArea.appendChild(sentence);
+        if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
+
+        const tokens = text.split(/(\s+)/);
+        let tokenIndex = 0;
+
+        function processNextToken() {
+            if (tokenIndex >= tokens.length) {
+                sentence.classList.add('visible');
+                manageVisibleSentences();
+                stopBreathing();
+                setTimeout(() => {
+                    isSpeaking = false;
+                    if (callback) callback();
+                    if (voiceQueue.length > 0) {
+                        const next = voiceQueue.shift();
+                        if (next.flow) speakFlow(next.text, next.callback);
+                        else if (next.fast) speakFast(next.text, next.callback);
+                        else if (next.finalReading) speakFinalReading(next.text, next.callback);
+                        else speak(next.text, next.callback);
+                    }
+                }, 500);
+                return;
+            }
+
+            const token = tokens[tokenIndex];
+            tokenIndex++;
+
+            if (/^\s+$/.test(token) || token === '') {
+                container.appendChild(document.createTextNode(token));
+                processNextToken();
+                return;
+            }
+
+            const wordEl = document.createElement('span');
+            wordEl.className = 'word';
+            for (const ch of token) {
+                const span = document.createElement('span');
+                span.className = 'materializing-char';
+                span.textContent = ch;
+                wordEl.appendChild(span);
+            }
+            container.appendChild(wordEl);
+            if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
+
+            const charSpans = wordEl.querySelectorAll('.materializing-char');
+            charSpans.forEach((span, idx) => {
+                setTimeout(() => span.classList.add('revealed'), idx * 22 + Math.random() * 12);
+            });
+
+            let delay = 70 + Math.random() * 45;
+            const lastChar = token[token.length - 1];
+            if (lastChar === '.' || lastChar === '!' || lastChar === '?') {
+                delay = 380 + Math.random() * 180;
+            } else if (lastChar === ',' || lastChar === ';' || lastChar === ':') {
+                delay = 220 + Math.random() * 100;
+            } else if (lastChar === '\u2014') {
+                delay = 300;
+            }
+
+            setTimeout(processNextToken, delay);
+        }
+
+        processNextToken();
+    }
+
     function speakFast(text, callback) {
         text = text.replace(/\([^)]*\)/g, '').trim();
 
@@ -376,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.createElement('span');
         sentence.appendChild(container);
         voiceArea.appendChild(sentence);
-        voiceArea.scrollTop = voiceArea.scrollHeight;
+        if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
 
         // Split text into 2-4 word groups
         const tokens = text.split(/(\s+)/);
@@ -466,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sentence.appendChild(container);
 
             voiceArea.appendChild(sentence);
-            voiceArea.scrollTop = voiceArea.scrollHeight;
+            if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
 
             // Pre-create character spans
             container.innerHTML = '';
@@ -597,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.createElement('span');
         sentence.appendChild(container);
         voiceArea.appendChild(sentence);
-        voiceArea.scrollTop = voiceArea.scrollHeight;
+        if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
 
         // Tokenize by words and whitespace (preserves line breaks and spaces)
         const tokens = text.split(/(\s+)/);
@@ -636,7 +738,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 wordEl.appendChild(span);
             }
             container.appendChild(wordEl);
-            voiceArea.scrollTop = voiceArea.scrollHeight;
+            if (voiceArea.scrollHeight - voiceArea.scrollTop - voiceArea.clientHeight < 60) voiceArea.scrollTop = voiceArea.scrollHeight;
 
             // Reveal characters in this word
             const charSpans = wordEl.querySelectorAll('.materializing-char');
@@ -672,12 +774,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const maxVisible = 3;
         const total = sentences.length;
 
+        // Fade older lines instead of removing them — allows the user to scroll back
         sentences.forEach((s, index) => {
             if (index < total - maxVisible) {
                 s.classList.add('fading');
-                setTimeout(() => {
-                    if (s.parentNode) s.parentNode.removeChild(s);
-                }, 800);
+            } else {
+                s.classList.remove('fading');
             }
         });
     }
@@ -776,6 +878,112 @@ function layOutFan(cardElements, options = {}) {
                 `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${scale})`;
             card.style.opacity = opacity.toString();
         }, delay);
+    });
+}
+
+function pourDown(callback) {
+    if (!cards || cards.length === 0) {
+        if (callback) callback();
+        return;
+    }
+
+    // Reset all cards above the void
+    cards.forEach((card, i) => {
+        card.classList.remove('pouring');
+        card.style.zIndex = i;
+        card.style.opacity = '0';
+        card.style.transform = 'translate(0, -80vh) scale(0.35)';
+        card.style.setProperty('--pour-start-rot', ((Math.random() * 16 - 8)).toFixed(2) + 'deg');
+        card.style.setProperty('--pour-end-rot', ((Math.random() * 6 - 3)).toFixed(2) + 'deg');
+    });
+
+    // Stagger the pour: each card starts 10ms after the previous
+    const stagger = 10;
+    const fallDuration = 700;
+
+    cards.forEach((card, i) => {
+        setTimeout(() => {
+            card.classList.add('pouring');
+        }, i * stagger);
+    });
+
+    const totalTime = cards.length * stagger + fallDuration;
+
+    setTimeout(() => {
+        // Clean up animation classes
+        cards.forEach(card => {
+            card.classList.remove('pouring');
+            card.style.opacity = '0.6';
+            card.style.transform = 'translate(0, 0) rotate(0deg) scale(0.7)';
+        });
+        // Short hold, then fan out
+        setTimeout(() => {
+            fanCards();
+            if (callback) callback();
+        }, 400);
+    }, totalTime);
+}
+
+function startShuffleWander() {
+    const state = { active: true, cards: [] };
+
+    cards.forEach((card, i) => {
+        const angle0 = (i / cards.length) * Math.PI * 2 + Math.random() * 0.6;
+        const radius = 30 + Math.random() * 60;
+        const speed = 0.3 + Math.random() * 0.5;
+        const phase = Math.random() * Math.PI * 2;
+
+        card.style.transition = 'none';
+        card.style.zIndex = 100 + i;
+
+        state.cards.push({ el: card, angle0, radius, speed, phase });
+    });
+
+    const startTime = performance.now();
+
+    function tick() {
+        if (!state.active) return;
+        const t = (performance.now() - startTime) / 1000;
+
+        state.cards.forEach(c => {
+            const angle = c.angle0 + t * c.speed;
+            const x = Math.cos(angle) * c.radius;
+            const y = Math.sin(angle) * c.radius * 0.4;
+            const rot = Math.sin(t * c.speed * 2 + c.phase) * 12;
+            c.el.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(0.6)`;
+            c.el.style.opacity = '0.75';
+        });
+
+        requestAnimationFrame(tick);
+    }
+
+    tick();
+
+    return {
+        stop: () => { state.active = false; }
+    };
+}
+
+function endShuffleWander(controller) {
+    return new Promise(resolve => {
+        if (controller) controller.stop();
+
+        const gatherDuration = 900;
+
+        cards.forEach((card, i) => {
+            card.style.transition = `transform ${gatherDuration}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 400ms ease`;
+            card.style.transform = `translate(0, 0) rotate(${Math.random() * 2 - 1}deg) scale(0.7)`;
+            card.style.opacity = '0.9';
+            card.style.zIndex = i;
+        });
+
+        setTimeout(() => {
+            cards.forEach(c => c.classList.add('stack-pulse'));
+            setTimeout(() => {
+                cards.forEach(c => c.classList.remove('stack-pulse'));
+                resolve();
+            }, 800);
+        }, gatherDuration);
     });
 }
 
@@ -1063,7 +1271,7 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
     }
 
     function proceedToIntake() {
-        fanCards();
+        pourDown();
         brightenCandle();
         setTimeout(() => {
             interactionHint.classList.add('visible');
@@ -1208,10 +1416,10 @@ function dealFromDeck(spreadData, cardLines, threadText, callback) {
         if (candleAction === 'reveal-thread') {
             candleAction = 'start-intake';
             wipeVoiceBox();
-            // Use the new final reading function
-            speakFinalReading(threadTextData, () => { 
-                interactionHint.textContent = '— the reading is complete —';
-                interactionHint.classList.add('visible');
+            // Speak the thread, then enter the closing state
+            speakFinalReading(threadTextData, () => {
+                interactionHint.classList.remove('visible');
+                enterClosingState();
             });
             return;
         }
@@ -1268,7 +1476,7 @@ function hideThinkingState() {
             });
             const data = await response.json();
             if (data.opener) {
-                speak(data.opener, () => {
+                speakFlow(data.opener, () => {
                     showUserInput();
                 });
             }
@@ -1310,7 +1518,7 @@ function hideThinkingState() {
                     startReading();
                 });
             } else {
-                speak(data.reply, () => {
+                speakFlow(data.reply, () => {
                     showUserInput();
                 });
             }
@@ -1327,10 +1535,11 @@ function hideThinkingState() {
             console.log('📖 startReading called');
             console.log('📖 sketchData:', sketchData);
 
-            // Show thinking state
-            showThinkingState();
-            interactionHint.textContent = '— Madame Tarocchai is reading the cards... —';
+            // Show shuffle message and start wander
+            const shuffleAdj = SHUFFLE_ADJECTIVES[Math.floor(Math.random() * SHUFFLE_ADJECTIVES.length)];
+            interactionHint.textContent = '— the cards shuffle, ' + shuffleAdj + ' —';
             interactionHint.classList.add('visible');
+            const wanderController = startShuffleWander();
 
             // 2. Generate the reading
             const fetchStart = Date.now();
@@ -1360,27 +1569,20 @@ function hideThinkingState() {
             cardLinesData = data.card_lines || {};
             threadTextData = data.thread;
 
-            // Channeling state: minimum 2.5s hold during LLM latency
-            const elapsed = Date.now() - fetchStart;
-            const remaining = Math.max(0, 2500 - elapsed);
-            if (remaining > 0) {
-                await new Promise(resolve => setTimeout(resolve, remaining));
-            }
+            // LLM has returned — end the wander and converge
+            await endShuffleWander(wanderController);
 
             hideThinkingState();
             interactionHint.classList.remove('visible');
 
-            // 3. Dim candle for shuffle
+            // Dim candle briefly
             dimCandle();
 
-            // 4. Shuffle and deal
-            shuffleCards(() => {
-                brightenCandle();
-                speak('Three cards. Past, Present, Future.', () => {
-                    dealFromDeck(data.spread, data.card_lines, data.thread, () => {
-                        // Called after the thread has been spoken on candle click
-                        console.log('📖 Reading sequence complete');
-                    });
+            // Cards are already stacked from the shuffle — deal from here
+            brightenCandle();
+            speak('Three cards. Past, Present, Future.', () => {
+                dealFromDeck(data.spread, data.card_lines, data.thread, () => {
+                    console.log('📖 Reading sequence complete');
                 });
             });
         } catch (e) {
@@ -1389,6 +1591,213 @@ function hideThinkingState() {
             interactionHint.textContent = '— the reading is complete —';
             interactionHint.classList.add('visible');
         }
+    }
+
+    // --------------------------------------------------------------
+    // Closing state — appears after thread ends
+    // --------------------------------------------------------------
+    function enterClosingState() {
+        const closing = document.getElementById('closing-options');
+        if (closing) {
+            closing.classList.add('active');
+        }
+
+        const btnTake = document.getElementById('btn-take');
+        const btnSnuff = document.getElementById('btn-snuff');
+
+        if (btnTake && !btnTake.dataset.wired) {
+            btnTake.dataset.wired = '1';
+            btnTake.addEventListener('click', handleTakeReading);
+        }
+        if (btnSnuff && !btnSnuff.dataset.wired) {
+            btnSnuff.dataset.wired = '1';
+            btnSnuff.addEventListener('click', handleSnuff);
+        }
+    }
+
+    // --------------------------------------------------------------
+    // Download generator — self-contained HTML artifact
+    // --------------------------------------------------------------
+    async function imageToDataURL(url) {
+        try {
+            const resp = await fetch(url);
+            const blob = await resp.blob();
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.warn('Could not embed image:', url, e);
+            return '';
+        }
+    }
+
+    function escapeHTML(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function handleTakeReading() {
+        const btnTake = document.getElementById('btn-take');
+        if (btnTake) {
+            btnTake.disabled = true;
+            btnTake.textContent = '[ gathering… ]';
+        }
+
+        try {
+            const now = new Date();
+            const stamp = now.toISOString().slice(0, 10);
+            const readableDate = now.toLocaleDateString(undefined, {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            const name = querentName ? escapeHTML(querentName) : 'a visitor';
+            const sketch = escapeHTML(sketchData || '');
+            const thread = escapeHTML(threadTextData || '');
+
+            const cardsHTML = [];
+            if (spreadData && spreadData.length) {
+                for (let i = 0; i < spreadData.length; i++) {
+                    const entry = spreadData[i];
+                    const card = entry.card;
+                    const imgPath = entry.image_path || '';
+                    const dataURL = await imageToDataURL(imgPath);
+                    const baseLine = escapeHTML(entry.base_line || '');
+                    const imgTag = dataURL
+                        ? '<img src="' + dataURL + '" alt="' + escapeHTML(card.name) + '">'
+                        : '<div class="no-img">' + escapeHTML(card.name) + '</div>';
+                    cardsHTML.push(
+                        '<figure class="card">' +
+                            imgTag +
+                            '<figcaption>' +
+                                '<div class="card-name">' + escapeHTML(card.name) + '</div>' +
+                                (baseLine ? '<div class="card-line">' + baseLine + '</div>' : '') +
+                            '</figcaption>' +
+                        '</figure>'
+                    );
+                }
+            }
+
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TarocchAI — a reading for ${name}</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0604;
+    color: #d9d0c1;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    padding: 6vh 8vw;
+    line-height: 1.7;
+  }
+  .header { text-align: center; margin-bottom: 5vh; }
+  .header h1 {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.5rem;
+    color: #d4af37;
+    letter-spacing: 0.1em;
+  }
+  .header .sub { font-size: 0.85rem; color: #a89880; margin-top: 1rem; }
+  .sketch {
+    font-style: italic;
+    color: #a89880;
+    border-left: 2px solid rgba(184,155,75,0.4);
+    padding-left: 1.2rem;
+    margin-bottom: 6vh;
+    font-size: 0.95rem;
+  }
+  .cards { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; margin-bottom: 6vh; }
+  .card { flex: 0 0 auto; width: 180px; text-align: center; }
+  .card img { width: 100%; height: auto; border-radius: 4px; border: 1px solid rgba(184,155,75,0.4); }
+  .card .no-img { padding: 2rem; border: 1px solid rgba(184,155,75,0.3); border-radius: 4px; }
+  .card-name { font-size: 0.8rem; color: #d4af37; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.8rem; }
+  .card-line { font-size: 0.75rem; color: #a89880; margin-top: 0.4rem; font-style: italic; }
+  .thread { font-size: 1rem; white-space: pre-wrap; }
+  .thread p { margin-bottom: 1.4rem; }
+  .footer { margin-top: 8vh; text-align: center; font-size: 0.75rem; color: #6a5a45; letter-spacing: 0.15em; }
+</style>
+</head>
+<body>
+  <header class="header">
+    <h1>A reading for ${name}</h1>
+    <div class="sub">${escapeHTML(readableDate)}</div>
+  </header>
+  <p class="sketch">${sketch}</p>
+  <div class="cards">${cardsHTML.join('')}</div>
+  <div class="thread">${thread.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>
+  <div class="footer">TarocchAI</div>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tarocchai-reading-' + stamp + '.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+            if (btnTake) {
+                btnTake.disabled = false;
+                btnTake.textContent = '[ taken ]';
+                setTimeout(() => { btnTake.textContent = '[ take it with you ]'; }, 3000);
+            }
+        } catch (e) {
+            console.error('Download failed:', e);
+            if (btnTake) {
+                btnTake.disabled = false;
+                btnTake.textContent = '[ could not gather ]';
+                setTimeout(() => { btnTake.textContent = '[ take it with you ]'; }, 3000);
+            }
+        }
+    }
+
+    // --------------------------------------------------------------
+    // Snuff — exit sequence
+    // --------------------------------------------------------------
+    function handleSnuff() {
+        const candle = document.getElementById('candle-container');
+        const overlay = document.getElementById('exit-overlay');
+
+        // 1. Flicker the flame
+        if (candle) candle.classList.add('snuff-flicker');
+
+        // 2. At 200ms, snuff and spawn smoke
+        setTimeout(() => {
+            if (candle) {
+                candle.classList.remove('snuff-flicker');
+                candle.classList.add('snuffed');
+
+                const puff = document.createElement('div');
+                puff.className = 'flame-smoke';
+                candle.appendChild(puff);
+                requestAnimationFrame(() => puff.classList.add('rising'));
+            }
+        }, 200);
+
+        // 3. At 500ms, fade to black
+        setTimeout(() => {
+            if (overlay) overlay.classList.add('active');
+        }, 500);
+
+        // 4. At 2400ms, reload to Threshold
+        setTimeout(() => {
+            window.location.reload();
+        }, 2400);
     }
 
     function replaceVoiceContent(text) {

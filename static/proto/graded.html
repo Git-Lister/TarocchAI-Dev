@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>TarocchAI — Graded Proto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400&family=JetBrains+Mono:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --parchment: #d9d0c1;
+  --gold: #b89b4b;
+  --gold-bright: #d4af37;
+  --font-alive: 'JetBrains Mono', monospace;
+  --font-still: 'IBM Plex Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--font-still);
+  color: var(--parchment);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   GRID — 2 x 2 cells
+   ============================================================ */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  width: 100vw;
+  height: 100vh;
+  gap: 2px;
+  background: #000;
+}
+.cell {
+  position: relative;
+  overflow: hidden;
+  background: #050301;
+}
+.cell-label {
+  position: absolute;
+  top: 10px; left: 14px;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-transform: uppercase;
+  z-index: 100;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.cell-label::before {
+  content: "◆"; margin-right: 10px; color: var(--gold); font-size: 7px; vertical-align: 1px;
+}
+
+/* ============================================================
+   THE SCENE — everything positions inside this
+   ============================================================ */
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  --i: 1;              /* master intensity multiplier */
+  --soft-blur: calc(0.4px * var(--i));
+  --grain-op: 0.14;
+  --vignette-op: 0.65;
+  --grade-op: 0.10;
+  --lift-op: 0.05;
+  --bloom-op: 0.55;
+  --halation-op: 0.5;
+  --leak-op: 0.20;
+  --chroma-op: 0.35;
+}
+.scene[data-i="0"] { --i: 0; }
+.scene[data-i="1"] { --i: 0.35; }
+.scene[data-i="2"] { --i: 0.65; }
+.scene[data-i="3"] { --i: 1; }
+
+/* ============================================================
+   ROOM — base, chequer, horizon, field
+   ============================================================ */
+.room-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  filter: blur(var(--soft-blur));
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 38%,
+      rgba(70, 40, 18, 0.5) 0%,
+      rgba(35, 18, 10, 0.6) 40%,
+      transparent 80%),
+    linear-gradient(to bottom, #060301 0%, #0a0604 40%, #080402 70%, #030201 100%);
+}
+.room-base::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.14'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.room-ceiling {
+  position: absolute;
+  left: 0; right: 0;
+  top: 0; bottom: 66%;
+  z-index: 1;
+  overflow: hidden;
+  perspective: 480px;
+  perspective-origin: 50% 100%;
+  filter: blur(var(--soft-blur));
+}
+.room-ceiling-plane {
+  position: absolute;
+  left: -80%; right: -80%;
+  top: -180%; bottom: 34%;
+  transform: rotateX(-72deg);
+  transform-origin: 50% 100%;
+  background-image: repeating-conic-gradient(rgba(184, 155, 75, 0.14) 0% 25%, transparent 0% 50%);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 90% at 50% 100%, black 15%, black 55%, transparent 100%);
+          mask-image: radial-gradient(ellipse 70% 90% at 50% 100%, black 15%, black 55%, transparent 100%);
+}
+
+.room-floor {
+  position: absolute;
+  left: 0; right: 0;
+  top: 0; bottom: 0;
+  z-index: 1;
+  overflow: hidden;
+  perspective: 480px;
+  perspective-origin: 50% 34%;
+  filter: blur(var(--soft-blur));
+}
+.room-floor-plane {
+  position: absolute;
+  left: -80%; right: -80%;
+  top: 34%; bottom: -180%;
+  transform: rotateX(72deg);
+  transform-origin: 50% 0;
+  background-image: repeating-conic-gradient(rgba(184, 155, 75, 0.32) 0% 25%, transparent 0% 50%);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, black 15%, black 55%, transparent 100%);
+          mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, black 15%, black 55%, transparent 100%);
+}
+
+.horizon {
+  position: absolute;
+  left: 0; right: 0;
+  top: 20%; height: 12%;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 55% 80% at 50% 50%,
+    rgba(0, 0, 0, 0.90) 0%, rgba(20, 10, 5, 0.6) 30%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+  filter: blur(6px);
+}
+
+.field {
+  position: absolute;
+  left: 32%; right: 32%;
+  top: 20%; height: 12%;
+  z-index: 3;
+  pointer-events: none;
+  filter: blur(32px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 20%, transparent 72%);
+          mask-image: radial-gradient(ellipse at 50% 50%, black 20%, transparent 72%);
+}
+.field-layer { position: absolute; inset: 0; border-radius: 50%; mix-blend-mode: screen; }
+.field-layer.l1 { background: radial-gradient(ellipse at 42% 48%, rgba(184,155,75,0.55) 0%, rgba(140,90,45,0.20) 45%, transparent 75%); animation: field-a 9s ease-in-out infinite; }
+.field-layer.l2 { background: radial-gradient(ellipse at 58% 52%, rgba(140,90,45,0.42) 0%, rgba(100,50,25,0.15) 50%, transparent 78%); animation: field-b 13s ease-in-out infinite; }
+.field-layer.l3 { background: radial-gradient(ellipse at 50% 44%, rgba(140,26,26,0.30) 0%, transparent 62%); animation: field-c 17s ease-in-out infinite; }
+@keyframes field-a { 0%,100%{opacity:.6;transform:scale(1) translateY(0);} 50%{opacity:1;transform:scale(1.08) translateY(-3px);} }
+@keyframes field-b { 0%,100%{opacity:.8;transform:scale(1.02) translateY(2px);} 50%{opacity:.55;transform:scale(.96) translateY(-2px);} }
+@keyframes field-c { 0%,100%{opacity:.5;transform:scale(1);} 50%{opacity:.9;transform:scale(1.1);} }
+
+/* ============================================================
+   SLAB / TABLE
+   ============================================================ */
+.slab {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translateX(-50%);
+  width: 84%;
+  height: 42%;
+  z-index: 10;
+  clip-path: polygon(5% 0, 95% 0, 100% 82%, 100% 100%, 0 100%, 0 82%);
+  filter: drop-shadow(0 22px 30px rgba(0,0,0,0.9)) drop-shadow(0 4px 8px rgba(0,0,0,0.7));
+}
+.slab-top {
+  position: absolute;
+  left: 0; right: 0;
+  top: 0; height: 82%;
+  overflow: hidden;
+  background: radial-gradient(ellipse 60% 70% at 50% 45%,
+    rgba(70, 26, 18, 0.92) 0%, rgba(45, 14, 10, 0.96) 50%, rgba(25, 8, 6, 0.99) 100%);
+}
+.slab-top::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)' opacity='0.4'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay; pointer-events: none;
+}
+.slab-pattern {
+  position: absolute;
+  left: 3%; right: 3%;
+  top: 6%; bottom: 6%;
+  overflow: hidden;
+  filter: blur(calc(0.2px * var(--i)));
+  -webkit-mask-image: radial-gradient(ellipse 94% 98% at 50% 50%, black 62%, transparent 100%);
+          mask-image: radial-gradient(ellipse 94% 98% at 50% 50%, black 62%, transparent 100%);
+}
+.slab-pattern svg { display: block; width: 100%; height: 100%; }
+.slab-far-line {
+  position: absolute;
+  left: 5%; right: 5%; top: 4%; height: 1px;
+  background: linear-gradient(to right,
+    transparent 0%, rgba(184,155,75,0.30) 15%, rgba(212,175,55,0.55) 50%,
+    rgba(184,155,75,0.30) 85%, transparent 100%);
+  filter: blur(0.5px); z-index: 5;
+}
+.slab-frame {
+  position: absolute;
+  left: 5%; right: 5%; top: 6%; bottom: 16%;
+  clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+  border: 1px solid rgba(184, 155, 75, 0.32);
+  pointer-events: none; z-index: 4;
+}
+.slab-frame::before {
+  content: ""; position: absolute; inset: 5px;
+  border: 1px solid rgba(184, 155, 75, 0.14);
+}
+.slab-face {
+  position: absolute;
+  left: 0; right: 0; bottom: 0; height: 18%;
+  background: linear-gradient(to bottom,
+    rgba(30, 12, 8, 0.98) 0%, rgba(18, 7, 5, 1) 40%, rgba(8, 3, 2, 1) 100%);
+  z-index: 4;
+}
+.slab-face::before {
+  content: ""; position: absolute;
+  left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(to right,
+    transparent 0%, rgba(184,155,75,0.28) 12%, rgba(212,175,55,0.5) 50%,
+    rgba(184,155,75,0.28) 88%, transparent 100%);
+  filter: blur(0.6px);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.cards-row {
+  position: absolute;
+  left: 50%; top: 22%;
+  transform: translateX(-50%);
+  display: flex; gap: 18px;
+  z-index: 20;
+}
+.card {
+  width: 80px;
+  aspect-ratio: 170 / 264;
+  background:
+    var(--card-back, linear-gradient(160deg, #1a1612 0%, #0f0c09 100%));
+  border: 1px solid rgba(184, 155, 75, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.85), 0 0 40px rgba(212,175,55,0.10);
+  background-image: url('/static/img/card_back.png');
+  background-size: cover;
+  background-position: center;
+}
+.card.tilt-l { transform: rotate(-3deg) translateY(3px); }
+.card.tilt-c { transform: translateY(-2px); }
+.card.tilt-r { transform: rotate(3deg) translateY(3px); }
+
+/* ============================================================
+   FLAME — waxy candle
+   ============================================================ */
+.flame {
+  position: absolute;
+  right: 14%; top: 36%;
+  width: 40px; height: 80px;
+  z-index: 22;
+}
+.flame .glow {
+  position: absolute;
+  left: 50%; top: 30%;
+  transform: translate(-50%, -50%);
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 190, 80, 0.42) 0%,
+    rgba(255, 140, 40, 0.16) 35%,
+    transparent 70%);
+  filter: blur(18px);
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
+}
+.flame .wax {
+  position: absolute;
+  left: 50%; bottom: 10px;
+  transform: translateX(-50%);
+  width: 14px; height: 34px;
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(to right,
+    rgba(60,45,28,0.95) 0%, #c8a870 22%, #e8d8b0 50%, #c8a870 78%, rgba(60,45,28,0.95) 100%);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.85), inset 0 -3px 6px rgba(90,60,30,0.4);
+}
+.flame .core {
+  position: absolute;
+  left: 50%; bottom: 46px;
+  transform: translateX(-50%);
+  width: 14px; height: 26px;
+  border-radius: 50% 50% 45% 45% / 62% 62% 38% 38%;
+  background: radial-gradient(ellipse at 50% 70%,
+    #ffffff 0%, #fde7a0 20%, #f8b04a 45%, rgba(230,90,25,0.85) 75%, transparent 100%);
+  filter:
+    blur(0.4px)
+    drop-shadow(0 0 12px rgba(255,220,120,1))
+    drop-shadow(0 0 36px rgba(255,160,60,0.75))
+    drop-shadow(0 0 80px rgba(255,100,20,0.4));
+  animation: flame-drift 3.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes flame-drift {
+  0%, 100% { transform: translate(-50%, 0) scale(1, 1) rotate(-1deg); opacity: 0.96; }
+  25%      { transform: translate(-48%, 0) scale(0.94, 1.08) rotate(1.5deg); opacity: 1; }
+  50%      { transform: translate(-52%, 0) scale(1.06, 0.94) rotate(-2deg); opacity: 0.9; }
+  75%      { transform: translate(-50%, 0) scale(0.97, 1.04) rotate(1.2deg); opacity: 0.98; }
+}
+.flame .dish {
+  position: absolute;
+  left: 50%; bottom: 0;
+  transform: translateX(-50%);
+  width: 48px; height: 13px;
+  border-radius: 50% 50% 30% 30% / 65% 65% 35% 35%;
+  background: radial-gradient(ellipse at 50% 30%, #d4a838 0%, #a87a2a 35%, #5a3a10 75%, #2a1a08 100%);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.9), inset 0 2px 3px rgba(255,220,120,0.35);
+}
+
+/* ============================================================
+   MT'S VOICE (samples for the proto)
+   ============================================================ */
+.mt-voice {
+  position: absolute;
+  left: 50%; top: 8%;
+  transform: translateX(-50%);
+  width: 72%;
+  z-index: 12;
+  display: flex; flex-direction: column; gap: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+.voice-line {
+  font-family: var(--font-alive);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--parchment);
+  letter-spacing: 0.005em;
+  text-shadow:
+    0 0 20px rgba(0,0,0,0.9),
+    0 0 40px rgba(0,0,0,0.6),
+    0 0 18px rgba(184,155,75,0.30);
+  opacity: 0.95;
+}
+
+/* ============================================================
+   FX LAYERS — the grading stack
+   ============================================================ */
+
+/* 1. WARM GRADE — subtle amber overlay via multiply
+      (warm highlights, slightly cyan shadows) */
+.fx-warm-grade {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom,
+      rgba(255, 180, 90, calc(var(--grade-op) * 0.8)) 0%,
+      rgba(180, 120, 50, calc(var(--grade-op) * 0.4)) 40%,
+      rgba(40, 40, 60, calc(var(--grade-op) * 0.5)) 100%);
+  mix-blend-mode: soft-light;
+}
+
+/* 2. BLACK LIFT — no true blacks, slight cool-gray wash */
+.fx-black-lift {
+  position: absolute;
+  inset: 0;
+  z-index: 41;
+  pointer-events: none;
+  background: rgba(28, 26, 30, 1);
+  opacity: var(--lift-op);
+  mix-blend-mode: screen;
+}
+
+/* 3. BLOOM — soft cream glow, screen-blended */
+.fx-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 22% 30% at 82% 42%,
+      rgba(255, 220, 160, calc(var(--bloom-op) * 0.35)) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 60% 30% at 50% 60%,
+      rgba(200, 150, 90, calc(var(--bloom-op) * 0.12)) 0%,
+      transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* 4. HALATION — the flame and bright areas bleed warm */
+.fx-halation {
+  position: absolute;
+  inset: 0;
+  z-index: 43;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 82% 42%,
+      rgba(255, 140, 60, calc(var(--halation-op) * 0.55)) 0%,
+      rgba(255, 90, 30, calc(var(--halation-op) * 0.22)) 6%,
+      transparent 18%);
+  mix-blend-mode: screen;
+  filter: blur(4px);
+}
+
+/* 5. VIGNETTE — non-linear, slightly off-centre */
+.fx-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 78% at 51% 49%,
+      transparent 32%,
+      rgba(0, 0, 0, calc(var(--vignette-op) * 0.35)) 60%,
+      rgba(0, 0, 0, calc(var(--vignette-op) * 0.85)) 88%,
+      rgba(0, 0, 0, calc(var(--vignette-op) * 0.98)) 100%);
+}
+
+/* 6. LIGHT LEAK — slow warm bleed from upper-left */
+.fx-light-leak {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 50% at 0% 0%,
+      rgba(255, 140, 60, calc(var(--leak-op) * 0.6)) 0%,
+      rgba(255, 90, 30, calc(var(--leak-op) * 0.25)) 40%,
+      transparent 75%);
+  mix-blend-mode: screen;
+  animation: light-leak-breathe 24s ease-in-out infinite;
+}
+@keyframes light-leak-breathe {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+/* 7. CHROMATIC ABERRATION — radial, done with two pseudo layers */
+.fx-chroma {
+  position: absolute;
+  inset: 0;
+  z-index: 46;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: var(--chroma-op);
+}
+.fx-chroma::before,
+.fx-chroma::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: inherit;
+}
+.fx-chroma::before {
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 50%,
+      transparent 40%, rgba(255, 60, 60, 0.35) 100%);
+  transform: translate(-0.4px, 0);
+}
+.fx-chroma::after {
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 50%,
+      transparent 40%, rgba(60, 60, 255, 0.28) 100%);
+  transform: translate(0.4px, 0);
+}
+
+/* 8. GRAIN — animated SVG turbulence, 24fps */
+.fx-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 47;
+  pointer-events: none;
+  opacity: var(--grain-op);
+  mix-blend-mode: overlay;
+}
+.fx-grain svg {
+  width: 100%; height: 100%; display: block;
+}
+
+/* 9. FRAME JITTER — the scene micro-shifts, rarely */
+.fx-jitter {
+  position: absolute;
+  inset: -4px;
+  z-index: 48;
+  pointer-events: none;
+  animation: jitter 7s steps(1) infinite;
+}
+@keyframes jitter {
+  0%, 22%   { transform: translate(0, 0); }
+  23%, 27%  { transform: translate(0.5px, -0.3px); }
+  28%, 55%  { transform: translate(0, 0); }
+  56%, 58%  { transform: translate(-0.4px, 0.6px); }
+  59%, 100% { transform: translate(0, 0); }
+}
+
+/* 10. SOFT FOCUS — applied only to the far planes */
+.soft-focus {
+  filter: blur(var(--soft-blur));
+}
+
+/* 11. ASPECT FRAME — subtle outer darkening / corner softening */
+.fx-aspect {
+  position: absolute;
+  inset: 0;
+  z-index: 49;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 80px rgba(0, 0, 0, calc(var(--i) * 0.55)),
+    inset 0 0 24px rgba(0, 0, 0, calc(var(--i) * 0.35));
+}
+
+/* 12. PHOSPHOR TEXT GLOW — subtle CRT warmth on bright pixels */
+.fx-phosphor {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: calc(var(--i) * 0.16);
+  background:
+    radial-gradient(ellipse 60% 6% at 50% 9%,
+      rgba(255, 230, 200, 0.7) 0%,
+      transparent 80%);
+  filter: blur(6px);
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SHARED SVG FILTER — animated grain
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+  <defs>
+    <filter id="grain-shared" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch">
+        <animate attributeName="seed" values="1;2;3;4;5;6;7;8;9;10;11;12" dur="0.5s" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feColorMatrix values="0.33 0.33 0.33 0 0
+                             0.33 0.33 0.33 0 0
+                             0.33 0.33 0.33 0 0
+                             0    0    0    0 1"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- ============================================================
+     GRID
+     ============================================================ -->
+<div class="grid">
+
+  <!-- ============================ BASELINE ============================ -->
+  <div class="cell">
+    <div class="cell-label">Baseline</div>
+    <div class="scene" data-i="0">
+      <div class="room-base"></div>
+      <div class="room-ceiling"><div class="room-ceiling-plane"></div></div>
+      <div class="room-floor"><div class="room-floor-plane"></div></div>
+      <div class="horizon"></div>
+      <div class="field">
+        <div class="field-layer l1"></div>
+        <div class="field-layer l2"></div>
+        <div class="field-layer l3"></div>
+      </div>
+
+      <div class="slab">
+        <div class="slab-top">
+          <div class="slab-pattern" data-phyllo="0"></div>
+          <div class="slab-far-line"></div>
+          <div class="slab-frame"></div>
+        </div>
+        <div class="slab-face"></div>
+        <div class="cards-row">
+          <div class="card tilt-l"></div>
+          <div class="card tilt-c"></div>
+          <div class="card tilt-r"></div>
+        </div>
+        <div class="flame">
+          <div class="glow"></div>
+          <div class="wax"></div>
+          <div class="core"></div>
+          <div class="dish"></div>
+        </div>
+      </div>
+
+      <div class="mt-voice">
+        <div class="voice-line">Ah, T. The afternoon has a way of making things seem more urgent.</div>
+        <div class="voice-line">The cards have been waiting for you.</div>
+      </div>
+
+      <!-- FX -->
+      <div class="fx-warm-grade"></div>
+      <div class="fx-black-lift"></div>
+      <div class="fx-bloom"></div>
+      <div class="fx-halation"></div>
+      <div class="fx-vignette"></div>
+      <div class="fx-light-leak"></div>
+      <div class="fx-chroma"></div>
+      <div class="fx-grain">
+        <svg preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#grain-shared)"/></svg>
+      </div>
+      <div class="fx-jitter"></div>
+      <div class="fx-aspect"></div>
+      <div class="fx-phosphor"></div>
+    </div>
+  </div>
+
+  <!-- ============================ SUBTLE ============================ -->
+  <div class="cell">
+    <div class="cell-label">Subtle</div>
+    <div class="scene" data-i="1">
+      <div class="room-base"></div>
+      <div class="room-ceiling"><div class="room-ceiling-plane"></div></div>
+      <div class="room-floor"><div class="room-floor-plane"></div></div>
+      <div class="horizon"></div>
+      <div class="field">
+        <div class="field-layer l1"></div>
+        <div class="field-layer l2"></div>
+        <div class="field-layer l3"></div>
+      </div>
+
+      <div class="slab">
+        <div class="slab-top">
+          <div class="slab-pattern" data-phyllo="1"></div>
+          <div class="slab-far-line"></div>
+          <div class="slab-frame"></div>
+        </div>
+        <div class="slab-face"></div>
+        <div class="cards-row">
+          <div class="card tilt-l"></div>
+          <div class="card tilt-c"></div>
+          <div class="card tilt-r"></div>
+        </div>
+        <div class="flame">
+          <div class="glow"></div>
+          <div class="wax"></div>
+          <div class="core"></div>
+          <div class="dish"></div>
+        </div>
+      </div>
+
+      <div class="mt-voice">
+        <div class="voice-line">Ah, T. The afternoon has a way of making things seem more urgent.</div>
+        <div class="voice-line">The cards have been waiting for you.</div>
+      </div>
+
+      <div class="fx-warm-grade"></div>
+      <div class="fx-black-lift"></div>
+      <div class="fx-bloom"></div>
+      <div class="fx-halation"></div>
+      <div class="fx-vignette"></div>
+      <div class="fx-light-leak"></div>
+      <div class="fx-chroma"></div>
+      <div class="fx-grain">
+        <svg preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#grain-shared)"/></svg>
+      </div>
+      <div class="fx-jitter"></div>
+      <div class="fx-aspect"></div>
+      <div class="fx-phosphor"></div>
+    </div>
+  </div>
+
+  <!-- ============================ MEDIUM ============================ -->
+  <div class="cell">
+    <div class="cell-label">Medium</div>
+    <div class="scene" data-i="2">
+      <div class="room-base"></div>
+      <div class="room-ceiling"><div class="room-ceiling-plane"></div></div>
+      <div class="room-floor"><div class="room-floor-plane"></div></div>
+      <div class="horizon"></div>
+      <div class="field">
+        <div class="field-layer l1"></div>
+        <div class="field-layer l2"></div>
+        <div class="field-layer l3"></div>
+      </div>
+
+      <div class="slab">
+        <div class="slab-top">
+          <div class="slab-pattern" data-phyllo="2"></div>
+          <div class="slab-far-line"></div>
+          <div class="slab-frame"></div>
+        </div>
+        <div class="slab-face"></div>
+        <div class="cards-row">
+          <div class="card tilt-l"></div>
+          <div class="card tilt-c"></div>
+          <div class="card tilt-r"></div>
+        </div>
+        <div class="flame">
+          <div class="glow"></div>
+          <div class="wax"></div>
+          <div class="core"></div>
+          <div class="dish"></div>
+        </div>
+      </div>
+
+      <div class="mt-voice">
+        <div class="voice-line">Ah, T. The afternoon has a way of making things seem more urgent.</div>
+        <div class="voice-line">The cards have been waiting for you.</div>
+      </div>
+
+      <div class="fx-warm-grade"></div>
+      <div class="fx-black-lift"></div>
+      <div class="fx-bloom"></div>
+      <div class="fx-halation"></div>
+      <div class="fx-vignette"></div>
+      <div class="fx-light-leak"></div>
+      <div class="fx-chroma"></div>
+      <div class="fx-grain">
+        <svg preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#grain-shared)"/></svg>
+      </div>
+      <div class="fx-jitter"></div>
+      <div class="fx-aspect"></div>
+      <div class="fx-phosphor"></div>
+    </div>
+  </div>
+
+  <!-- ============================ HEAVY ============================ -->
+  <div class="cell">
+    <div class="cell-label">Heavy</div>
+    <div class="scene" data-i="3">
+      <div class="room-base"></div>
+      <div class="room-ceiling"><div class="room-ceiling-plane"></div></div>
+      <div class="room-floor"><div class="room-floor-plane"></div></div>
+      <div class="horizon"></div>
+      <div class="field">
+        <div class="field-layer l1"></div>
+        <div class="field-layer l2"></div>
+        <div class="field-layer l3"></div>
+      </div>
+
+      <div class="slab">
+        <div class="slab-top">
+          <div class="slab-pattern" data-phyllo="3"></div>
+          <div class="slab-far-line"></div>
+          <div class="slab-frame"></div>
+        </div>
+        <div class="slab-face"></div>
+        <div class="cards-row">
+          <div class="card tilt-l"></div>
+          <div class="card tilt-c"></div>
+          <div class="card tilt-r"></div>
+        </div>
+        <div class="flame">
+          <div class="glow"></div>
+          <div class="wax"></div>
+          <div class="core"></div>
+          <div class="dish"></div>
+        </div>
+      </div>
+
+      <div class="mt-voice">
+        <div class="voice-line">Ah, T. The afternoon has a way of making things seem more urgent.</div>
+        <div class="voice-line">The cards have been waiting for you.</div>
+      </div>
+
+      <div class="fx-warm-grade"></div>
+      <div class="fx-black-lift"></div>
+      <div class="fx-bloom"></div>
+      <div class="fx-halation"></div>
+      <div class="fx-vignette"></div>
+      <div class="fx-light-leak"></div>
+      <div class="fx-chroma"></div>
+      <div class="fx-grain">
+        <svg preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#grain-shared)"/></svg>
+      </div>
+      <div class="fx-jitter"></div>
+      <div class="fx-aspect"></div>
+      <div class="fx-phosphor"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Build phyllotaxis into each slab-pattern
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function buildPhyllotaxis(container, seed) {
+  if (!container) return;
+  const W = 900, H = 500;
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  const sunG = document.createElementNS(SVG_NS, 'g');
+  sunG.setAttribute('id', 'sun-' + seed);
+  const dot = document.createElementNS(SVG_NS, 'circle');
+  dot.setAttribute('r', '0.9');
+  dot.setAttribute('fill', 'currentColor');
+  sunG.appendChild(dot);
+  const rays = document.createElementNS(SVG_NS, 'g');
+  rays.setAttribute('stroke', 'currentColor');
+  rays.setAttribute('stroke-width', '0.45');
+  rays.setAttribute('stroke-linecap', 'round');
+  rays.setAttribute('fill', 'none');
+  [[0,-1.6,0,-2.6],[0,1.6,0,2.6],[-1.6,0,-2.6,0],[1.6,0,2.6,0],
+   [-1.2,-1.2,-1.85,-1.85],[1.2,1.2,1.85,1.85],
+   [-1.2,1.2,-1.85,1.85],[1.2,-1.2,1.85,-1.85]].forEach(([x1,y1,x2,y2]) => {
+    const l = document.createElementNS(SVG_NS, 'line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    rays.appendChild(l);
+  });
+  sunG.appendChild(rays);
+  defs.appendChild(sunG);
+  svg.appendChild(defs);
+
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  const cx = W / 2, cy = H / 2;
+  const count = 1800;
+  const maxR = 480;
+  for (let i = 0; i < count; i++) {
+    const r = Math.sqrt(i / count) * maxR;
+    const theta = i * GOLDEN;
+    const x = cx + r * Math.cos(theta);
+    const y = cy + r * Math.sin(theta);
+    const dist = r / maxR;
+    const op = Math.max(0.15, 1 - dist);
+    const size = 0.75 + (1 - dist) * 0.4;
+    const col = `rgba(200,168,90,${op * 0.85})`;
+    const u = document.createElementNS(SVG_NS, 'use');
+    u.setAttribute('href', '#sun-' + seed);
+    u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#sun-' + seed);
+    u.setAttribute('x', x);
+    u.setAttribute('y', y);
+    u.setAttribute('color', col);
+    if (size !== 1) {
+      u.setAttribute('transform', `translate(${x},${y}) scale(${size}) translate(${-x},${-y})`);
+    }
+    svg.appendChild(u);
+  }
+
+  const core = document.createElementNS(SVG_NS, 'radialGradient');
+  core.setAttribute('id', 'core-' + seed);
+  const s1 = document.createElementNS(SVG_NS, 'stop');
+  s1.setAttribute('offset', '0%'); s1.setAttribute('stop-color', 'rgba(0,0,0,0.5)');
+  const s2 = document.createElementNS(SVG_NS, 'stop');
+  s2.setAttribute('offset', '35%'); s2.setAttribute('stop-color', 'rgba(0,0,0,0)');
+  core.appendChild(s1); core.appendChild(s2);
+  const defs2 = document.createElementNS(SVG_NS, 'defs');
+  defs2.appendChild(core);
+  svg.insertBefore(defs2, svg.firstChild);
+  const c = document.createElementNS(SVG_NS, 'circle');
+  c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+  c.setAttribute('r', 90); c.setAttribute('fill', `url(#core-${seed})`);
+  svg.appendChild(c);
+
+  container.appendChild(svg);
+}
+
+document.querySelectorAll('.slab-pattern').forEach((el, i) => {
+  buildPhyllotaxis(el, i);
+});
+</script>
+</body>
+</html>
