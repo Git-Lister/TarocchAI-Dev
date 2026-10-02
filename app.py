@@ -14,14 +14,26 @@ from engine.reading.interpreter import TarotReader
 
 
 @app.middleware("http")
-async def add_no_cache_headers(request: Request, call_next):
+async def cache_control_headers(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static/"):
+    path = request.url.path
+    # Static files: keep aggressive no-cache (correct during dev)
+    if path.startswith("/static/"):
         response.headers["Cache-Control"] = (
             "no-store, no-cache, must-revalidate, max-age=0"
         )
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+    # Root page: permit bfcache.
+    # Remove `no-store` so browsers can keep the page in the back/forward cache.
+    # Keep `no-cache` so the browser still revalidates on a fresh navigation.
+    elif path == "/" or path.startswith("/?") or path == "":
+        response.headers["Cache-Control"] = "no-cache"
+        # Remove the other disqualifying headers NiceGUI may have set
+        if "Pragma" in response.headers:
+            del response.headers["Pragma"]
+        if "Expires" in response.headers:
+            del response.headers["Expires"]
     return response
 
 
@@ -37,7 +49,7 @@ app.add_static_files("/static", "static")
 @ui.page("/")
 def main():
     # Load CSS and JS via NiceGUI's methods (not inside index.html)
-    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css?v=19">')
+    ui.add_head_html('<link rel="stylesheet" href="/static/css/tarot.css?v=20">')
     ui.add_body_html('<script src="/static/js/slab-pattern.js?v=1"></script>')
     ui.add_body_html('<script src="/static/js/tarot.core.js?v=1"></script>')
     ui.add_body_html('<script src="/static/js/tarot.js?v=21"></script>')
@@ -123,11 +135,24 @@ async def generate_reading(data: dict):
 # ------------------------------------------------------------
 # Launch
 # ------------------------------------------------------------
-STORAGE_SECRET = secrets.token_hex(32)
+# Stable storage secret — persists across restarts if a secret file exists.
+# On first run, one is generated and written. Subsequent runs reuse it.
+import os
+from pathlib import Path
+
+SECRET_FILE = Path(".storage_secret")
+if SECRET_FILE.exists():
+    STORAGE_SECRET = SECRET_FILE.read_text().strip()
+else:
+    STORAGE_SECRET = secrets.token_hex(32)
+    SECRET_FILE.write_text(STORAGE_SECRET)
+
 ui.run(
     title="TarocchAI",
     host="0.0.0.0",
-    port=8081,
+    port=8090,
     dark=True,
     storage_secret=STORAGE_SECRET,
+    reconnect_timeout=120.0,
+    reload=False,
 )
