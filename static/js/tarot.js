@@ -1992,3 +1992,30 @@ function hideThinkingState() {
     }, 4000);
 
 });  // End of DOMContentLoaded
+
+    // --------------------------------------------------------------
+    // Mobile keyboard detection — keeps input above on-screen keyboard
+    // --------------------------------------------------------------
+    if (window.visualViewport) {
+        const setKbHeight = () => {
+            const vv = window.visualViewport;
+            const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+            document.documentElement.style.setProperty('--kb-height', kb + 'px');
+        };
+        window.visualViewport.addEventListener('resize', setKbHeight);
+        window.visualViewport.addEventListener('scroll', setKbHeight);
+        setKbHeight();
+    }
+
+    // --------------------------------------------------------------
+    // WebSocket keep-alive — prevents Cloudflare Tunnel idle-close
+    // --------------------------------------------------------------
+    setInterval(() => {
+        fetch('/', { method: 'HEAD', cache: 'no-store' }).catch(() => {});
+    }, 45000);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            fetch('/', { method: 'HEAD', cache: 'no-store' }).catch(() => {});
+        }
+    });
