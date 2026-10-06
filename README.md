@@ -1,217 +1,251 @@
 
 # TarocchAI
 
-**A local, offline Tarot reader that sees spirit in the material.**
-Built with NiceGUI, Ollama, and a deep respect for the querent's lived reality.
+*A tarot reading, at a table, in a room that is not quite on this side of things.*
 
 ---
 
-## Philosophy
+## I
 
-TarocchAI speaks to one querent at a time. The reading is a co‑creation
-between your own imagery and the cards, guided by an earthy, grounded
-intelligence. We believe every card points to something real — a
-relationship, a decision, a weight you’re carrying — and that insight
-is always paired with a small, concrete step forward.
+The candle has been lit for longer than I can tell you.
 
----
+The cards are old but they are not mine. They belong to whoever sits
+down. I only turn them over.
 
-## How It Works (For the Curious)
+I don't ask you what's wrong. You would give me the answer you have
+rehearsed. Instead I might ask what the air around you looks like. Or
+what object in the room has been catching your eye. Or what you saw
+on the way here that you didn't mention.
 
-A good tarot reader rarely starts by asking, “So, what’s your problem?”  
-Instead, they might notice how you hold your shoulders, or ask about a
-dream you had, or hand you a card and say, “What do you see in this?”
+You answer. I listen. I don't write anything down. I notice the shape
+of what you say.
 
-TarocchAI begins in the same sideways way. It asks gentle, slightly
-poetic questions — about the colour of the air around you, the texture
-of your week, an object in the room that feels alive. These aren’t
-random. They’re designed to help you speak from a less guarded place,
-bypassing the part of the mind that wants to give a tidy answer.
+Then three cards come.
 
-Whatever you say — a clock that’s stopped, a heavy grey‑blue sky —
-becomes the raw material the reading is built from.
+They are not chosen for you. Chance chooses them. This is important —
+I don't know what they will be any more than you do.
 
-**The Mirror Card**  
-Before the official spread, the app shows you a single card image
-and asks, “What catches your eye first?” Your answer isn’t judged;
-it’s simply another thread the reader will weave in later.
+I turn them one at a time. I tell you what each one is. Not what it
+means for you — not yet. I introduce them, the way I would introduce
+someone I have known a long time. When all three have been named, I
+look at them together.
 
-**The Cards**  
-Three cards are drawn genuinely at random (Past, Present, Future).  
-TarocchAI doesn’t pick cards to match your story — chance does that.  
-But once they’re on the table, the app draws on a deep well of
-traditional meanings, symbolism, and the unique imagery you’ve already
-shared, and finds the story that wants to be told.
+What comes out is a shape, not a forecast. Something has been moving
+through your life for a while. I only say what I see.
 
-**The Reading**  
-The reading itself is created by an AI that has been carefully
-instructed in a particular philosophy:
-
-- Every card points to something real: a relationship, a decision, a weight you’re carrying.
-- Insight without a small, practical next step is incomplete.
-- You’re not a passive passenger in your own life; the cards light up the floor, and you decide where to step.
-
-The voice is warm, earthy, and never preachy. It won’t predict the
-future. It will name the forces at play, the tensions, the hidden gifts,
-and then offer one gentle, concrete thing you might actually do tomorrow.
-
-**And Then the Curtain Closes**  
-After the reading, the app draws the curtain and returns to stillness.  
-There is no upsell, no tracking, no cloud. Everything runs on your own
-computer, in private. The whole experience is meant to feel like a
-single, uninterrupted conversation — the kind you might have had in a
-reader’s candlelit room, once, long ago.
+When it is finished you may take it with you. Or you may snuff the
+candle and let the room close. Either is fine.
 
 ---
 
-## Current State (MVP)
+## II
 
-- [x] Oblique intake interview (projective, side‑door questions)
-- [x] True‑random card drawing (3‑card Past‑Present‑Future spread)
-- [x] AI‑generated reading in a consistent, warm voice
-- [x] Rich knowledge base (78 card meanings, esoteric / historical / materialist)
-- [x] Retrieval‑Augmented Generation (RAG) for deep card interpretation
-- [x] NiceGUI frontend with dark tarot‑inspired styling
-- [x] Fully local (no cloud, no API keys)
-- [x] Card artwork generation (grindhouse‑medieval house style)
-- [ ] Text‑to‑speech (XTTS) for spoken readings
-- [ ] Additional spreads and reading modes
+If you want to know how the room works, I'll tell you this much.
+
+**The intake.** Three to six questions. None of them direct. This is
+not a trick. Direct questions get rehearsed answers. Sideways questions
+get the truth.
+
+**The cards.** Drawn with hardware entropy — genuinely random, not
+shuffled from a list. I do not pick them to match your story. I could
+not if I tried. Whatever appears is what will be read.
+
+**The reading.** I look at what the three say to each other. I do not
+announce "past, present, future" — you will feel the positions rather
+than be told them. My voice is mine. It is warm because I am warm, not
+because the script calls for it.
+
+**The end.** No upsell. No tracking. No cloud. Nothing leaves this
+room. I don't even see you — only the shape of you, which is what I
+work with anyway.
 
 ---
 
-## Tech Stack
+## III
+
+*For whoever built the room.*
+
+The rest of this document is technical. If you are a querent, you can
+stop here. If you are the one who put the candle on the table, read on.
+
+### Tech Stack
 
 | Component          | Technology |
 |--------------------|------------|
 | Language           | Python 3.11 |
-| UI framework       | NiceGUI |
-| LLM inference      | Ollama (Llama 3.1 8B Instruct) |
+| Server             | FastAPI via NiceGUI |
+| Frontend           | Static HTML/CSS/JS served through NiceGUI |
+| LLM inference      | Ollama (Llama 3.1 8B Instruct, Q6_K) |
 | Card draw entropy  | `secrets` (hardware random) |
 | Embeddings / RAG   | ChromaDB + sentence-transformers |
-| Art generation     | Stable Diffusion + LoRA (planned) |
+| Card artwork       | ComfyUI (custom generated deck) |
 | TTS                | XTTS (planned) |
-| Packaging          | Docker (planned) |
 
----
+### Quick Start
 
-## First‑Time Setup (Local)
+*Instructions assume Windows. Adjust paths for Linux/macOS.*
 
-*These instructions assume a Windows machine, but they work on Linux/macOS with
-slight path adjustments.*
+**1. Clone**
 
-### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/TarocchAI.git
-cd TarocchAI
+git clone https://github.com/Git-Lister/TarocchAI-Dev.git
+cd TarocchAI-Dev
 ```
 
-### 2. Install Python 3.11
-- Download the **Windows 64‑bit installer** from [python.org](https://www.python.org/downloads/release/python-3119/).
-- During installation, check **“Add Python to PATH”**.
-- Verify in a terminal:
-  ```bash
-  python --version
-  ```
-  You should see `Python 3.11.x`.
+**2. Python 3.11**
 
-### 3. Create and activate a virtual environment
+Install from [python.org](https://www.python.org/downloads/). Check
+"Add to PATH".
+
+**3. Virtual environment**
+
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Linux/macOS
 ```
 
-### 4. Install Python dependencies
+**4. Dependencies**
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Install Ollama
-- Download from [ollama.com](https://ollama.com) and install.
-- Start the Ollama server in a separate terminal (keep it running):
-  ```bash
-  ollama serve
-  ```
+**5. Ollama**
 
-### 6. Pull the required model
-In your main terminal (with the venv activated):
+Install from [ollama.com](https://ollama.com). Then in a separate
+terminal (keep running):
+
 ```bash
+ollama serve
 ollama pull llama3.1:8b-instruct-q6_K
 ```
-*(The app expects this model by default; if you change models, edit `config.py`.)*
 
-### 7. Build the knowledge base index
-The app uses a vector database to retrieve detailed card meanings.  
-You only need to do this once:
+**6. Build the RAG index (once)**
+
 ```bash
 python engine/rag/build_index.py
 ```
-You should see `Indexed 78 cards into .../data/vectors`.
 
-### 8. Run the app
+**7. Run**
+
 ```bash
 python app.py
 ```
-Open your browser and go to **http://localhost:8080**.
 
----
+The console prints the local URL — typically `http://localhost:8080`
+or `http://localhost:8081`. Open that in a browser.
 
-## Usage
+For mobile testing, a Cloudflare tunnel works well:
 
-- Click **Enter** to begin.
-- The intake interviewer will ask a few oblique questions. Answer freely — there’s no wrong response.
-- When prompted, describe what catches your eye in the mirror card.
-- Three cards will be revealed (Past, Present, Future).
-- Press **Reveal Reading** — the TarocchAI Reader will stream your reading.
-- The curtain closes. If you want another session, click **Read again?**.
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
 
----
-
-## Project Structure
+### Project Structure
 
 ```
-TarocchAI/
-├── app.py                     # NiceGUI frontend
+TarocchAI-Dev/
+├── app.py                     # FastAPI server + NiceGUI page serving
 ├── config.py                  # Model name, Ollama URL
-├── setup.py                   # Project tree generator
 ├── requirements.txt
-├── Dockerfile / docker-compose.yml
 ├── engine/
-│   ├── intake/                # Oblique intake agent
-│   ├── reading/               # Card drawing & LLM interpreter
-│   ├── rag/                   # Vector retrieval & index builder
-│   ├── tts/                   # Voice synthesis (placeholder)
-│   └── art/                   # Card image generation (placeholder)
+│   ├── llm_client.py          # Ollama singleton
+│   ├── ollama_queue.py        # Serialises LLM calls
+│   ├── data_store.py          # Session persistence
+│   ├── intake/
+│   │   └── interviewer.py     # Oblique intake agent
+│   ├── reading/
+│   │   ├── drawer.py          # True-random card drawing
+│   │   └── interpreter.py     # Reading generation (two-stage)
+│   ├── rag/
+│   │   ├── retriever.py       # Vector retrieval
+│   │   └── build_index.py     # ChromaDB index builder
+│   └── madame/
+│       └── being.py           # The Madame Tarocchai voice block
+├── static/
+│   ├── index.html             # DOM structure
+│   ├── css/
+│   │   └── tarot.css
+│   ├── js/
+│   │   ├── tarot.js
+│   │   ├── tarot.core.js      # State machine + text band (v2)
+│   │   └── slab-pattern.js
+│   ├── img/cards/             # 78 card images + card_back.png
+│   └── proto/                 # Design prototypes (not served)
 ├── data/
-│   ├── knowledge_base/        # 78‑card structured meanings (cards.json)
-│   ├── vectors/               # ChromaDB storage
-│   └── voices/                # XTTS voice files (future)
-├── ui/                        # CSS, fonts, static assets
-├── tests/                     # Test scripts
-└── research/                  # Art history, archetypes, Hayles notes
+│   ├── knowledge_base/
+│   │   └── cards.json
+│   └── vectors/               # ChromaDB storage
+└── docs/                      # Design notes, MADAME.md
 ```
 
----
+### Current State
 
-## Roadmap
+**Working:**
 
-- [ ] Populate `data/knowledge_base/` with detailed card meanings from public‑domain sources  
-- [x] Implement RAG retrieval (ChromaDB + sentence‑transformers)  
-- [ ] Train LoRA for house style card art, integrate into app  
-- [ ] Add TTS option using XTTS  
-- [ ] Build additional spreads (Celtic Cross, single card, etc.)  
-- [ ] Docker container for easy distribution  
-- [ ] In‑app documentation / philosophy page  
+- [x] Threshold, arrival, naming
+- [x] Oblique intake (3–6 turns, adaptive)
+- [x] True-random three-card draw
+- [x] Shuffle animation tied to LLM thinking time
+- [x] Card deal and per-card flip
+- [x] Per-card lines in a descriptive (non-directed) register
+- [x] Woven final reading
+- [x] Koan closing beat
+- [x] Download as self-contained HTML
+- [x] Snuff-candle exit sequence
+- [x] RAG over a 78-card knowledge base
+- [x] Fully local (no cloud, no keys)
+- [x] Mobile portrait layout
+- [x] Custom card artwork
 
----
+**Next:**
 
-## Credits
+- [ ] Session persistence across mobile backgrounding
+- [ ] Photographic asset pipeline (candle, field, table)
+- [ ] Card geometry refinement
+- [ ] XTTS voice integration
+- [ ] Additional spreads
+- [ ] Docker packaging
 
-TarocchAI was conceived and built as a personal project, drawing on:
-- The Tarot traditions of Marseille and Rider‑Waite‑Smith
+### Design Notes
+
+A few decisions that shape the experience, for anyone reading or
+modifying the code:
+
+**The MADAME block.** `engine/madame/being.py` holds a single
+`BEING` constant prepended to every system prompt. If the voice
+drifts, edit this file first — one change propagates everywhere she
+speaks.
+
+**Two registers.** The final reading addresses the querent directly
+("you"). The three per-card lines do not — they describe each card
+as an entity, at a slight distance, so meaning can settle before the
+thread is woven. Don't collapse them.
+
+**The thread is not a forecast.** The reader names forces, not
+outcomes. It closes with a koan-like return to the querent's own
+imagery. No "tomorrow you should…". The closing beat is a permission
+to notice, not advice.
+
+**Text materialisation.** `speak`, `speakFlow`, `speakFast`, and
+`speakFinalReading` have different pacing for different moments.
+Intake uses word-by-word flow with ghosting. The final reading uses
+word-by-word flow without ghosting. Don't unify them.
+
+### Credits
+
+Conceived and built as a personal project, drawing on:
+
+- The Tarot traditions of Marseille and Rider-Waite-Smith
 - Hermetic, alchemical, and materialist philosophy
-- The open‑source AI community (Ollama, Llama, NiceGUI, ChromaDB)
-- N. Katherine Hayles’ *Unthought* for the cognitive architecture of the intake
+- Alan Watts, Zhuangzi, and the Oracle at Delphi
+- N. Katherine Hayles' *Unthought* for the intake architecture
+- The open-source community — Ollama, Llama, NiceGUI, ChromaDB, FastAPI
 
+### License
+
+MIT
 ```
 
+---
